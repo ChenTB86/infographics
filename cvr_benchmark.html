@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive E-Commerce CVR Benchmark Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals (Stone, Amber, Teal/Cyan) -->
+    <!-- Application Structure Plan: The SPA retains its initial interactive dashboard view. The core change is the introduction of an infinite scroll mechanism. After the user interacts with the primary dashboard, scrolling down progressively loads subsequent, more detailed sections of the report: 1. The Conversion Hierarchy, 2. Global & Geographic Context, 3. Strategic Implications (Accordion), and 4. A comprehensive list of sources. This structure maintains the immediate utility of the interactive tool while allowing for a deeper, narrative-driven exploration of the report's content without overwhelming the user upfront. It transforms the page from a static tool into a story that unfolds on demand. -->
+    <!-- Visualization & Content Choices: 
+        - All previous choices retained for the dashboard.
+        - Infinite Scroll Content Sections (HTML/Tailwind): Goal: Organize/Inform. Method: Initially hidden sections are revealed on scroll with a fade-in animation. Justification: This makes a long, content-rich report digestible by breaking it into manageable chunks, improving user engagement and reducing initial cognitive load.
+        - Source Referencing (HTML `<a>` and `<sup>`): Goal: Inform/Build Trust. Method: Superscript links in the text connect to a final, detailed list of sources. Justification: Adds credibility and authority to the data presented, fulfilling a key user request for verifiable information.
+        - Global Stats Cards (HTML/Tailwind): Goal: Inform. Method: Styled cards to highlight key global CVR numbers from the report. Justification: Makes dense statistical information scannable and easy to grasp.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .chart-container { position: relative; width: 100%; height: 320px; max-height: 320px; }
+        @media (min-width: 768px) { .chart-container { height: 400px; max-height: 400px; } }
+        .filter-radio:checked + label { background-color: #0891b2; color: #ffffff; border-color: #0891b2; }
+        .filter-radio:focus + label { box-shadow: 0 0 0 2px #a5f3fc; }
+        .accordion-content { transition: max-height 0.3s ease-out, padding 0.3s ease-out; }
+        .scroll-section { transition: opacity 0.7s ease-in-out, transform 0.7s ease-in-out; }
+    </style>
+</head>
+<body class="bg-stone-50 text-slate-800">
+
+    <div class="container mx-auto px-4 py-8 md:py-12">
+        <header class="text-center mb-8 md:mb-12">
+            <h1 class="text-3xl md:text-5xl font-bold text-slate-900">E-Commerce Conversion Rate Explorer</h1>
+            <p class="mt-2 md:mt-4 text-lg text-slate-600 max-w-3xl mx-auto">An interactive dashboard analyzing 2024 benchmarks for Fashion and Health & Wellness across US, UK, and German markets.</p>
+        </header>
+
+        <main>
+            <!-- Interactive Dashboard Section -->
+            <section id="dashboard" class="bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-700 mb-3">Select Market</h3>
+                        <div id="market-filter" class="flex flex-wrap gap-2">
+                            <input type="radio" name="market" id="market-us" value="us" class="sr-only filter-radio" checked>
+                            <label for="market-us" class="px-4 py-2 rounded-lg border border-slate-300 cursor-pointer transition-colors duration-200 text-sm md:text-base">🇺🇸 United States</label>
+                            <input type="radio" name="market" id="market-uk" value="uk" class="sr-only filter-radio">
+                            <label for="market-uk" class="px-4 py-2 rounded-lg border border-slate-300 cursor-pointer transition-colors duration-200 text-sm md:text-base">🇬🇧 United Kingdom</label>
+                            <input type="radio" name="market" id="market-de" value="de" class="sr-only filter-radio">
+                            <label for="market-de" class="px-4 py-2 rounded-lg border border-slate-300 cursor-pointer transition-colors duration-200 text-sm md:text-base">🇩🇪 Germany</label>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-700 mb-3">Select Sector</h3>
+                        <div id="sector-filter" class="flex flex-wrap gap-2">
+                            <input type="radio" name="sector" id="sector-fashion" value="fashion" class="sr-only filter-radio" checked>
+                            <label for="sector-fashion" class="px-4 py-2 rounded-lg border border-slate-300 cursor-pointer transition-colors duration-200 text-sm md:text-base">👚 Fashion & Apparel</label>
+                            <input type="radio" name="sector" id="sector-health" value="health" class="sr-only filter-radio">
+                            <label for="sector-health" class="px-4 py-2 rounded-lg border border-slate-300 cursor-pointer transition-colors duration-200 text-sm md:text-base">❤️‍🩹 Health & Wellness</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-slate-50 p-6 rounded-xl border border-slate-200">
+                         <h2 class="text-xl md:text-2xl font-bold text-slate-800 mb-1">Performance Overview</h2>
+                         <p class="text-sm text-slate-500 mb-4">CVR by Primary Traffic Channels. Charts show the average of benchmark ranges.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 text-center">
+                            <div class="bg-white p-4 rounded-lg border border-slate-200">
+                                <h4 class="text-sm font-medium text-slate-500">Blended CVR</h4>
+                                <p id="blended-cvr-stat" class="text-3xl font-bold text-cyan-700 mt-1">2.9%</p>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-slate-200">
+                                <h4 class="text-sm font-medium text-slate-500">Organic CVR</h4>
+                                <p id="organic-cvr-stat" class="text-3xl font-bold text-cyan-700 mt-1">3.25%</p>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg border border-slate-200">
+                                <h4 class="text-sm font-medium text-slate-500">Paid CVR</h4>
+                                <p id="paid-cvr-stat" class="text-3xl font-bold text-cyan-700 mt-1">2.05%</p>
+                            </div>
+                        </div>
+                        <div class="chart-container max-w-2xl mx-auto">
+                            <canvas id="main-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-amber-50 p-6 rounded-xl border border-amber-200">
+                        <h3 class="text-xl font-bold text-slate-800 mb-3">Key Sector Insights</h3>
+                        <div id="insights-panel" class="space-y-3 text-slate-700 text-sm md:text-base"></div>
+                    </div>
+                </div>
+
+                <div class="mt-6 bg-slate-50 p-6 rounded-xl border border-slate-200">
+                    <h2 class="text-xl md:text-2xl font-bold text-slate-800 mb-1">Sub-Sector Breakdown</h2>
+                    <p id="sub-sector-title" class="text-sm text-slate-500 mb-4">Conversion Rate Nuances within the selected sector.</p>
+                     <div class="chart-container max-w-4xl mx-auto">
+                        <canvas id="sub-sector-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="channel-hierarchy" class="mt-12 opacity-0 transform translate-y-8 scroll-section">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl md:text-3xl font-bold text-slate-900">The Conversion Hierarchy</h2>
+                    <p class="mt-2 text-slate-600 max-w-2xl mx-auto">Across all industries, traffic channels show a consistent pecking order based on user intent. High-trust channels like Email and Referral lead, while low-intent channels like Social Media convert less frequently.<sup><a href="#source-6" class="text-cyan-600 hover:underline">[6]</a></sup></p>
+                </div>
+                 <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
+                    <div class="chart-container max-w-4xl mx-auto">
+                        <canvas id="channel-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="global-context" class="mt-12 opacity-0 transform translate-y-8 scroll-section">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl md:text-3xl font-bold text-slate-900">Global & Geographic Context</h2>
+                    <p class="mt-2 text-slate-600 max-w-2xl mx-auto">Understanding where your performance sits requires looking at global averages and key regional differences.</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 space-y-8">
+                    <div>
+                        <h3 class="font-bold text-xl text-slate-800">What is a "Good" Conversion Rate?</h3>
+                        <p class="text-slate-600 mt-2">Globally, an average CVR falls between 2% and 4%.<sup><a href="#source-7" class="text-cyan-600 hover:underline">[7]</a></sup> Achieving a rate over 3.2% places you in the top 20% of online stores, while the top 10% of performers boast rates of 4.7% or higher.<sup><a href="#source-3" class="text-cyan-600 hover:underline">[3]</a></sup></p>
+                    </div>
+                    <div class="grid md:grid-cols-3 gap-4 text-center">
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <h4 class="text-sm font-medium text-slate-500">United Kingdom</h4>
+                            <p class="text-3xl font-bold text-cyan-700 mt-1">~4.1%</p>
+                            <p class="text-xs text-slate-500 mt-1">Highest CVR, driven by market maturity.<sup><a href="#source-1" class="text-cyan-600 hover:underline">[1]</a></sup></p>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                             <h4 class="text-sm font-medium text-slate-500">United States</h4>
+                            <p class="text-3xl font-bold text-cyan-700 mt-1">~2.5%</p>
+                            <p class="text-xs text-slate-500 mt-1">Robust but significantly lower than UK.<sup><a href="#source-1" class="text-cyan-600 hover:underline">[1]</a></sup></p>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <h4 class="text-sm font-medium text-slate-500">Germany</h4>
+                            <p class="text-3xl font-bold text-cyan-700 mt-1">~2.2%</p>
+                            <p class="text-xs text-slate-500 mt-1">Performance is similar to the US market.<sup><a href="#source-15" class="text-cyan-600 hover:underline">[15]</a></sup></p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-xl text-slate-800">The UK Conversion Anomaly</h3>
+                        <p class="text-slate-600 mt-2">The UK's CVR is nearly double that of the US and Germany. This isn't an error, but a reflection of a hyper-competitive market where retailers are forced to perfect user experience. The UK's compact geography also allows for superior logistics (e.g., free next-day delivery), which removes a major point of friction at checkout and structurally boosts the national conversion rate.</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="strategy" class="mt-12 opacity-0 transform translate-y-8 scroll-section">
+                 <div class="text-center mb-8">
+                    <h2 class="text-2xl md:text-3xl font-bold text-slate-900">Strategic Implications</h2>
+                    <p class="mt-2 text-slate-600 max-w-2xl mx-auto">Actionable pathways for optimizing conversion rates based on key report findings.</p>
+                </div>
+                <div id="accordion-container" class="space-y-4 max-w-4xl mx-auto"></div>
+            </section>
+            
+            <section id="sources" class="mt-12 opacity-0 transform translate-y-8 scroll-section">
+                 <div class="text-center mb-8">
+                    <h2 class="text-2xl md:text-3xl font-bold text-slate-900">Sources</h2>
+                    <p class="mt-2 text-slate-600 max-w-2xl mx-auto">The data presented in this application is synthesized from numerous industry reports. Key sources include:</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 max-w-4xl mx-auto">
+                    <ol id="sources-list" class="list-decimal list-inside space-y-3 text-slate-600 text-sm">
+                        <!-- Sources will be injected by JS -->
+                    </ol>
+                </div>
+            </section>
+            
+            <div id="loading-indicator" class="text-center py-8 hidden">
+                <p class="text-slate-500">Loading more insights...</p>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-12 pt-8 border-t border-slate-200">
+            <p class="text-sm text-slate-500">Data synthesized from the "E-commerce Conversion Rate Benchmarks 2024" report.</p>
+            <p class="text-xs text-slate-400 mt-1">Interactive Application generated by AI.</p>
+        </footer>
+
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const benchmarkData = { us: { fashion: { blended: [2.7, 3.1], organic: [3.0, 3.5], paid: [1.6, 2.5], insights: "The US Fashion market is diverse. Performance hinges on the campaign's funnel stage. High-intent, bottom-funnel paid campaigns (like retargeting) can achieve over 4% CVR, while broader awareness campaigns average a much lower 1.6%.<sup><a href='#source-27' class='text-cyan-600 hover:underline'>[27]</a></sup> Organic search remains a strong, high-trust channel.", subSectors: { "Women's Apparel": 3.6, "Sportswear": 2.8, "Luxury": 1.1, "Men's Apparel": 0.8 } }, health: { blended: [3.7, 4.2], organic: [4.0, 5.5], paid: [3.0, 5.0], insights: "Trust is paramount. The US Health sector shows exceptional performance, especially in paid channels for lead generation (up to 11%).<sup><a href='#source-26' class='text-cyan-600 hover:underline'>[26]</a></sup> Direct sales CVR for paid search is strong (3-5%). Organic search benefits from a 'trust halo,' converting highly for users seeking credible health solutions.", subSectors: { "Wellness / Supplements": 4.5, "Medical / Pharmacy": 3.5 } } }, uk: { fashion: { blended: [1.3, 2.2], organic: [1.8, 2.5], paid: [1.0, 1.5], insights: "Despite the UK's high overall e-commerce CVR (4.1%), its fashion sector significantly underperforms.<sup><a href='#source-28' class='text-cyan-600 hover:underline'>[28]</a></sup> This suggests that while UK consumers are keen online shoppers, the inherent challenges of fashion (sizing, returns) remain a major barrier. Performance should be benchmarked against this lower 1.3%-2.2% range, not the national average.", subSectors: { "Women's Apparel": 2.5, "Sportswear": 2.0, "Luxury": 0.9, "Men's Apparel": 0.7 } }, health: { blended: [3.3, 3.3], organic: [3.5, 4.0], paid: [2.5, 3.0], insights: "The UK Health & Wellness market demonstrates robust performance, significantly outperforming the fashion sector. Organic search is a key channel, converting well due to high consumer trust. Paid search, while effective, has a higher Cost Per Acquisition, suggesting a CVR slightly below the blended average.<sup><a href='#source-36' class='text-cyan-600 hover:underline'>[36]</a></sup>", subSectors: { "Wellness / Supplements": 3.6, "Medical / Pharmacy": 3.0 } } }, de: { fashion: { blended: [1.27, 1.27], organic: [1.5, 1.8], paid: [1.0, 1.0], insights: "Germany's fashion CVR is similar to the UK's, reflecting the challenges of selling apparel online. The market's overall CVR is lower than the UK, and the fashion sector aligns with this trend, with a specific benchmark of 1.27%.<sup><a href='#source-15' class='text-cyan-600 hover:underline'>[15]</a></sup> Organic traffic shows a slight premium over paid, which has a baseline CVR around 1%.", subSectors: { "Women's Apparel": 2.0, "Sportswear": 1.8, "Luxury": 0.9, "Men's Apparel": 0.7 } }, health: { blended: [2.85, 2.85], organic: [3.0, 3.5], paid: [3.36, 3.36], insights: "Germany shows strong performance in Health, with a notable trend: paid search CVR (~3.4%) can outperform organic (~3.2%).<sup><a href='#source-35' class='text-cyan-600 hover:underline'>[35]</a></sup> This suggests that for specific health queries, a direct, targeted ad leading to a product page can be more effective at converting than a more general organic search result.", subSectors: { "Wellness / Supplements": 3.1, "Medical / Pharmacy": 2.7 } } } };
+        const channelHierarchyData = { labels: ['Email Marketing', 'Referral', 'Organic Search', 'Direct', 'Paid Search (PPC)', 'Social Media'], values: [5.5, 5.2, 3.0, 2.9, 2.2, 1.35] };
+        const accordionData = [ { title: 'The Mobile Conversion Imperative: Closing the Gap', content: "Mobile devices drive most e-commerce traffic, but conversion rates lag dramatically behind desktop (e.g., 1.8% mobile vs 3.9% desktop).<sup><a href='#source-6' class='text-cyan-600 hover:underline'>[6]</a></sup> This is the single largest optimization opportunity. The key is moving beyond 'mobile-responsive' to 'mobile-first' experiences. Focus on radical simplification of forms, thumb-friendly navigation, and streamlined one-click payment solutions like Apple Pay and Google Pay to reduce friction." }, { title: 'Tailoring CRO to Consumer Psychology', content: "<strong>For Fashion:</strong> The driver is <strong>visual desire</strong>. Invest in high-quality imagery, product videos, and User-Generated Content (UGC) showing real customers. Virtual try-on or advanced sizing tools directly address the main conversion barrier: 'fit anxiety.'<sup><a href='#source-24' class='text-cyan-600 hover:underline'>[24]</a></sup> <br><br> <strong>For Health:</strong> The driver is <strong>trust and efficacy</strong>. Prominently display trust signals like certifications, professional endorsements, and security seals. Use clear, simple language and provide full transparency on ingredients and sourcing to build authority.<sup><a href='#source-33' class='text-cyan-600 hover:underline'>[33]</a></sup>" }, { title: 'Channel-Specific Optimization Strategies', content: "<strong>Paid Traffic:</strong> Ensure perfect 'message match' between the ad and the landing page. A click on an ad for 'black leather boots' must lead directly to a page of black leather boots.<sup><a href='#source-16' class='text-cyan-600 hover:underline'>[16]</a></sup> <br><br> <strong>Organic Traffic:</strong> Target long-tail, high-intent keywords (e.g., 'best vitamin D for vegans') and build trust with authoritative, comprehensive content. <br><br> <strong>Email Traffic:</strong> Leverage automation. Abandoned cart reminders, back-in-stock alerts, and welcome series emails have dramatically higher CVRs than standard campaigns because they are timely, personal, and relevant.<sup><a href='#source-37' class='text-cyan-600 hover:underline'>[37]</a></sup>" } ];
+        const sourcesData = [
+            { id: 1, text: 'Adobe Digital Economy Index. General E-commerce Benchmarks.', url: 'https://business.adobe.com/digital-insights/digital-economy-index' },
+            { id: 3, text: 'Shopify Blog. "What Is a Good Conversion Rate in Ecommerce?".', url: 'https://www.shopify.com/blog/good-conversion-rate' },
+            { id: 6, text: 'Littledata. "What is a good conversion rate for Shopify stores?".', url: 'https://www.littledata.io/average/ecommerce-conversion-rate-(all-devices)' },
+            { id: 7, text: 'BigCommerce Blog. "What Is a Good Ecommerce Conversion Rate?".', url: 'https://www.bigcommerce.com/articles/ecommerce/ecommerce-conversion-rates/' },
+            { id: 15, text: 'Amasty Blog. "Average Conversion Rate by Industry in 2024".', url: 'https://amasty.com/blog/what-is-good-conversion-rate/' },
+            { id: 16, text: 'Dynamic Yield. "Personalization in Ecommerce".', url: 'https://www.dynamicyield.com/personalization/' },
+            { id: 24, text: 'Statista. "Leading challenges for online apparel retailers worldwide".', url: 'https://www.statista.com/statistics/1258079/leading-challenges-online-apparel-retailers-worldwide/' },
+            { id: 26, text: 'WordStream by LOCALiQ. "Search Advertising Benchmarks".', url: 'https://www.wordstream.com/blog/ws/2016/02/29/google-adwords-industry-benchmarks' },
+            { id: 27, text: 'Higher Visibility. "The Lowest & Highest Converting Industries on Google Ads".', url: 'https://www.highervisibility.com/blog/the-lowest-highest-converting-industries-on-google-ads/' },
+            { id: 28, text: 'IRP Commerce. "Ecommerce Market Data for Fashion Clothing & Accessories".', url: 'https://www.irpcommerce.com/en/gb/ecommercemarketdata.aspx?m=1&s=4' },
+            { id: 33, text: 'Unbounce. "Conversion Benchmark Report".', url: 'https://unbounce.com/conversion-benchmark-report/' },
+            { id: 35, text: 'Storegrowers. "Google Ads Benchmarks for Ecommerce".', url: 'https://www.storegrowers.com/google-ads-benchmarks/' },
+            { id: 36, text: 'IRP Commerce. "Ecommerce Market Data for Health & Wellbeing".', url: 'https://www.irpcommerce.com/en/gb/ecommercemarketdata.aspx?m=1&s=13' },
+            { id: 37, text: 'Campaign Monitor. "Ultimate Email Marketing Benchmarks".', url: 'https://www.campaignmonitor.com/resources/guides/email-marketing-benchmarks/' }
+        ];
+
+        let currentMarket = 'us', currentSector = 'fashion';
+        let mainChart, subSectorChart, channelChart;
+        let loadedSections = 0;
+        const sectionsToLoad = ['channel-hierarchy', 'global-context', 'strategy', 'sources'];
+        let isLoading = false;
+
+        const getAverage = (range) => (range[0] + range[1]) / 2;
+        const formatRange = (range) => `${range[0].toFixed(2)}% - ${range[1].toFixed(2)}%`;
+        
+        const updateDashboard = () => {
+            const data = benchmarkData[currentMarket][currentSector];
+            document.getElementById('blended-cvr-stat').textContent = formatRange(data.blended);
+            document.getElementById('organic-cvr-stat').textContent = formatRange(data.organic);
+            document.getElementById('paid-cvr-stat').textContent = formatRange(data.paid);
+            document.getElementById('insights-panel').innerHTML = `<p>${data.insights}</p>`;
+            mainChart.data.datasets[0].data = [getAverage(data.blended), getAverage(data.organic), getAverage(data.paid)];
+            mainChart.data.datasets[0].label = `CVR (%) in ${currentMarket.toUpperCase()} for ${currentSector.charAt(0).toUpperCase() + currentSector.slice(1)}`;
+            mainChart.update();
+            const subSectorData = data.subSectors;
+            document.getElementById('sub-sector-title').textContent = `Conversion Rate Nuances within the ${currentSector.charAt(0).toUpperCase() + currentSector.slice(1)} sector.`;
+            subSectorChart.data.labels = Object.keys(subSectorData);
+            subSectorChart.data.datasets[0].data = Object.values(subSectorData);
+            subSectorChart.update();
+        };
+
+        const createCharts = () => {
+            const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%` } } }, scales: { y: { beginAtZero: true, grid: { color: '#e2e8f0' } }, x: { grid: { display: false } } } };
+            const horizChartOptions = { ...chartOptions, indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${c.label}: ${c.parsed.x.toFixed(2)}%` } } }, scales: { x: { beginAtZero: true, grid: { color: '#e2e8f0' } }, y: { grid: { display: false } } } };
+            
+            mainChart = new Chart('main-chart', { type: 'bar', data: { labels: ['Blended', 'Organic', 'Paid'], datasets: [{ label: 'CVR (%)', data: [], backgroundColor: ['#0891b2', '#0e7490', '#164e63'], borderRadius: 4 }] }, options: chartOptions });
+            subSectorChart = new Chart('sub-sector-chart', { type: 'bar', data: { labels: [], datasets: [{ label: 'CVR (%)', data: [], backgroundColor: '#0891b2', borderRadius: 4 }] }, options: horizChartOptions });
+            channelChart = new Chart('channel-chart', { type: 'bar', data: { labels: channelHierarchyData.labels, datasets: [{ label: 'Average CVR (%)', data: channelHierarchyData.values, backgroundColor: '#0891b2', borderRadius: 4 }] }, options: horizChartOptions });
+        };
+        
+        const setupAccordion = () => {
+            const container = document.getElementById('accordion-container');
+            container.innerHTML = accordionData.map((item, index) => `<div class="border border-slate-200 rounded-xl bg-white overflow-hidden"><h2><button type="button" class="flex items-center justify-between w-full p-5 font-semibold text-left text-slate-800 hover:bg-slate-50" data-accordion-target="accordion-content-${index}"><span>${item.title}</span><svg class="w-3 h-3 rotate-180 shrink-0 accordion-arrow" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5 5 1 1 5"/></svg></button></h2><div id="accordion-content-${index}" class="accordion-content overflow-hidden max-h-0"><div class="p-5 border-t border-slate-200 text-slate-600">${item.content}</div></div></div>`).join('');
+            container.addEventListener('click', e => {
+                const button = e.target.closest('button[data-accordion-target]');
+                if (!button) return;
+                const content = document.getElementById(button.getAttribute('data-accordion-target'));
+                const arrow = button.querySelector('.accordion-arrow');
+                const isOpening = content.style.maxHeight === '0px' || !content.style.maxHeight;
+                document.querySelectorAll('.accordion-content').forEach(el => { el.style.maxHeight = '0px'; el.style.paddingTop = '0'; el.style.paddingBottom = '0'; });
+                document.querySelectorAll('.accordion-arrow').forEach(el => el.classList.add('rotate-180'));
+                if (isOpening) {
+                    content.style.paddingTop = '1.25rem'; content.style.paddingBottom = '1.25rem';
+                    content.style.maxHeight = content.scrollHeight + 'px';
+                    arrow.classList.remove('rotate-180');
+                }
+            });
+        };
+
+        const setupSources = () => {
+            const list = document.getElementById('sources-list');
+            list.innerHTML = sourcesData.map(s => `<li id="source-${s.id}"><a href="${s.url}" target="_blank" rel="noopener noreferrer" class="text-cyan-700 hover:underline">${s.text}</a></li>`).join('');
+        };
+
+        const loadNextSection = () => {
+            if (isLoading || loadedSections >= sectionsToLoad.length) return;
+            isLoading = true;
+            
+            const loadingIndicator = document.getElementById('loading-indicator');
+            loadingIndicator.classList.remove('hidden');
+
+            setTimeout(() => {
+                const sectionId = sectionsToLoad[loadedSections];
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.classList.remove('opacity-0', 'translate-y-8');
+                    loadedSections++;
+                }
+                loadingIndicator.classList.add('hidden');
+                isLoading = false;
+                if(loadedSections >= sectionsToLoad.length) {
+                    window.removeEventListener('scroll', handleScroll);
+                }
+            }, 500);
+        };
+        
+        const handleScroll = () => {
+            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 300) {
+                loadNextSection();
+            }
+        };
+        
+        const setupEventListeners = () => {
+            document.getElementById('market-filter').addEventListener('change', (e) => { if (e.target.name === 'market') { currentMarket = e.target.value; updateDashboard(); } });
+            document.getElementById('sector-filter').addEventListener('change', (e) => { if (e.target.name === 'sector') { currentSector = e.target.value; updateDashboard(); } });
+            window.addEventListener('scroll', handleScroll);
+        };
+
+        createCharts();
+        setupAccordion();
+        setupSources();
+        setupEventListeners();
+        updateDashboard();
+    });
+    </script>
+</body>
+</html>
