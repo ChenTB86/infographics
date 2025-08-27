@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Org Chart</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none;
+        }
+        .node rect, .node circle {
+            transition: all 0.3s ease;
+        }
+        .node text {
+            font-size: 11px;
+            pointer-events: none;
+        }
+        .node .role { font-size: 13px; font-weight: 600; }
+        .node .name { font-size: 12px; }
+        .link {
+            fill: none;
+            stroke: #94a3b8;
+            stroke-width: 1.5px;
+        }
+        .node.selected > rect {
+            stroke: #2563eb;
+            stroke-width: 3px;
+        }
+        .node.to-remove > rect {
+            stroke: #dc2626;
+            fill: #fecaca;
+        }
+        .node.to-remove > text {
+            text-decoration: line-through;
+        }
+        .node .exp-coll-btn {
+            cursor: pointer;
+            stroke-width: 1.5px;
+        }
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            width: 90%;
+            max-width: 500px;
+        }
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        .filter-container {
+            max-height: 80px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex flex-col h-screen overflow-hidden">
+
+    <!-- Top Header Panel -->
+    <header class="bg-white border-b border-slate-200 p-3 shadow-md z-10">
+        <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <h1 class="text-xl font-bold text-slate-900">Org Chart Explorer</h1>
+            
+            <div class="flex flex-wrap gap-x-3 gap-y-2">
+                <div class="flex items-center gap-2 bg-slate-100 p-2 rounded-lg"><span class="text-sm font-medium text-slate-600">Managers:</span><span id="total-managers" class="font-bold text-md text-blue-600">0</span></div>
+                <div class="flex items-center gap-2 bg-slate-100 p-2 rounded-lg"><span class="text-sm font-medium text-slate-600">ICs:</span><span id="total-ics" class="font-bold text-md text-green-600">0</span></div>
+                <div class="flex items-center gap-2 bg-slate-100 p-2 rounded-lg"><span class="text-sm font-medium text-slate-600">Total Productive HC:</span><span id="total-productive-hc" class="font-bold text-md text-slate-700">0</span></div>
+                <div class="flex items-center gap-2 bg-slate-100 p-2 rounded-lg"><span class="text-sm font-medium text-slate-600">Sales Prod:</span><span id="total-sales-productivity" class="font-bold text-md text-purple-600">0</span></div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                 <div id="selection-panel" class="bg-blue-50 border border-blue-200 p-2 rounded-lg hidden text-sm"><span class="font-semibold">Selected:</span><span id="selected-role-name" class="font-bold text-slate-800"></span></div>
+                <button id="add-role-btn" class="bg-blue-600 text-white font-semibold py-2 px-3 rounded-lg hover:bg-blue-700 transition disabled:bg-slate-300 disabled:cursor-not-allowed text-sm">Add Report</button>
+                <button id="edit-role-btn" class="bg-orange-500 text-white font-semibold py-2 px-3 rounded-lg hover:bg-orange-600 transition disabled:bg-slate-300 disabled:cursor-not-allowed text-sm">Edit Role</button>
+                <button id="remove-role-btn" class="bg-red-600 text-white font-semibold py-2 px-3 rounded-lg hover:bg-red-700 transition disabled:bg-slate-300 disabled:cursor-not-allowed text-sm">Toggle Removal</button>
+                <button id="reset-btn" class="bg-slate-500 text-white font-semibold py-2 px-3 rounded-lg hover:bg-slate-600 transition text-sm">Reset</button>
+                <label for="csv-upload" class="bg-teal-600 text-white font-semibold py-2 px-3 rounded-lg hover:bg-teal-700 transition cursor-pointer text-sm">Upload CSV</label>
+                <input type="file" id="csv-upload" class="visually-hidden" accept=".csv">
+            </div>
+        </div>
+        <!-- Filter Section -->
+        <div class="flex flex-wrap items-start gap-4 mt-2 pt-2 border-t border-slate-200">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-xs font-medium text-slate-700 mb-1">Filter by Biz Group</label>
+                <div id="geo-filter-container" class="filter-container bg-white border border-slate-200 rounded-md p-2 space-y-1"></div>
+            </div>
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-xs font-medium text-slate-700 mb-1">Filter by Function</label>
+                <div id="function-filter-container" class="filter-container bg-white border border-slate-200 rounded-md p-2 space-y-1"></div>
+            </div>
+            <div class="self-end">
+                 <button id="clear-filters-btn" class="bg-gray-200 text-slate-800 font-semibold py-2 px-3 rounded-lg hover:bg-gray-300 transition text-sm">Select All</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Chart Area -->
+    <main id="chart-container" class="flex-1 bg-slate-100 relative">
+        <svg id="org-chart-svg" class="w-full h-full"></svg>
+    </main>
+
+    <!-- Add/Edit Role Modal -->
+    <div id="role-modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h2 id="modal-title" class="text-xl font-bold mb-4">Add New Role</h2>
+            <form id="role-form">
+                <div class="space-y-4">
+                    <div><label for="role-title" class="block text-sm font-medium text-slate-700">Role Title</label><input type="text" id="role-title" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                    <div><label for="role-name" class="block text-sm font-medium text-slate-700">Name (optional)</label><input type="text" id="role-name" placeholder="Vacant" class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                    <div><label for="role-function" class="block text-sm font-medium text-slate-700">Function</label><input type="text" id="role-function" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                    <div><label for="role-geo" class="block text-sm font-medium text-slate-700">Geo-Business Group</label><input type="text" id="role-geo" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                    <div><label for="role-productivity" class="block text-sm font-medium text-slate-700">Productivity Score (0, 0.5, or 1)</label><input type="number" id="role-productivity" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" step="0.1" value="1"></div>
+                    <div><label for="role-sales-productivity" class="block text-sm font-medium text-slate-700">Sales Productivity</label><input type="number" id="role-sales-productivity" required class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" value="0"></div>
+                </div>
+                <div class="mt-6 flex justify-end space-x-2">
+                    <button type="button" id="cancel-modal-btn" class="bg-slate-200 text-slate-800 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 transition">Cancel</button>
+                    <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition">Save Role</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA PROCESSING ---
+        function processNode(node) {
+            const cleanString = (str) => str.replace(/,?\s*(DACH|UK|CEE)$/i, '').replace(/^Sr\.\s*/i, '').trim();
+            node.role = cleanString(node.role);
+            node.function = cleanString(node.function);
+            node.sales_productivity = node.sales_productivity || 0;
+            const hasChildren = node.children && node.children.length > 0;
+            if (hasChildren) {
+                node.productivity = node.role.toLowerCase().includes('team lead') ? 0.5 : 0;
+            } else {
+                node.productivity = 1;
+            }
+            if (node.children) {
+                node.children.forEach(processNode);
+            }
+        }
+
+        let initialRawData = {"id":1,"name":"Chen","role":"Regional head","function":"Executive","geo":"Global","children":[{"id":2,"name":"Alisa Viktoria Reich","children":[{"id":9,"name":"Emily Daub","role":"Account Manager","function":"Account Manager","geo":"DACH"},{"id":10,"name":"Nina Nägele","role":"Account Manager, DACH","function":"Account Manager, DACH","geo":"DACH"}, {"id":34,"name":"Lara Michales","role":"Account Manager","function":"Account Manager","geo":"DACH"}],"role":"Account Team Lead","function":"Account Team Lead","geo":"DACH"},{"id":3,"name":"Cecilia Ruppert","children":[{"id":35,"name":"Douglas","role":"Account Manager","function":"Account Manager","geo":"DACH"},{"id":37,"name":"Hiring","role":"Account Manager","function":"Account Manager","geo":"DACH"}],"role":"Account Team Lead","function":"Account Team Lead","geo":"DACH"},{"id":4,"name":"Karina Pereira","children":[{"id":11,"name":"Kshitiz Arora","role":"Account Manager","function":"Account Manager","geo":"Spain"},{"id":12,"name":"Luca Corsetti","role":"Account Manager","function":"Account Manager","geo":"Italy"},{"id":13,"name":"Maddalena Bossa","role":"Sr. Account Manager","function":"Sr. Account Manager","geo":"Italy"}],"role":"Account Team Lead","function":"Account Team Lead","geo":"Spain"},{"id":5,"name":"Amelia Sharp","children":[{"id":14,"name":"Ametz Garaizabal","role":"Account Manager","function":"Account Manager","geo":"UK"},{"id":15,"name":"Marc Olivier Akonde","role":"Account Manager","function":"Account Manager","geo":"France"},{"id":16,"name":"Joshua Edward Jones","role":"Account Manager","function":"Account Manager","geo":"UK"},{"id":17,"name":"Charlie Tien-re Wardle","role":"Account Manager,UK","function":"Account Manager,UK","geo":"UK"}],"role":"Account Director","function":"Account Director","geo":"UK"},{"id":6,"name":"Lior Gargir","children":[{"id":18,"name":"Renata Nugmanov","role":"Account Manager","function":"Account Manager","geo":"IL"},{"id":19,"name":"Kamilla Tursunova","role":"Account Manager","function":"Account Manager","geo":"CEE"},{"id":20,"name":"Talya Wigelman","role":"Account Manager","function":"Account Manager","geo":"IL"},{"id":21,"name":"Gilad Cohen-Almagor","role":"Sr. Account Manager","function":"Sr. Account Manager","geo":"IL"},{"id":36,"name":"Diana","role":"Account Manager","function":"Account Manager","geo":"CEE"}],"role":"Account Director","function":"Account Director","geo":"IL"},{"id":7,"name":"Sofiia Zuieva","children":[{"id":22,"name":"Jake Henley","role":"Sales Manager","function":"Sales Manager","geo":"UK", "sales_productivity": 380000},{"id":23,"name":"Laura Tamburini","role":"Sales Manager","function":"Sales Manager","geo":"Italy", "sales_productivity": 250000},{"id":24,"name":"Marianne Trotta","role":"Sales Manager","function":"Sales Manager","geo":"UK", "sales_productivity": 380000},{"id":25,"name":"Helene Mobarak","role":"Sales Manager","function":"Sales Manager","geo":"France", "sales_productivity": 300000},{"id":26,"name":"Dafna Hazan","children":[{"id":32,"name":"Almog Ginsberg","role":"Sales Manager","function":"Sales Manager","geo":"IL", "sales_productivity": 400000},{"id":33,"name":"Gurgen Shaybazyan Shaybazyan","role":"Sales Manager,CEE","function":"Sales Manager,CEE","geo":"CEE", "sales_productivity": 400000},{"id":39,"name":"Hiring","role":"Sales Manager","function":"Sales Manager","geo":"IL", "sales_productivity": 400000}],"role":"Sales Team Lead","function":"Sales Team Lead","geo":"IL"},{"id":27,"name":"Raoul Gutierrez Alamo","role":"Sr. Sales Manager","function":"Sr. Sales Manager","geo":"Spain", "sales_productivity": 300000}],"role":"Sales Director","function":"Sales Director","geo":"Multi"},{"id":8,"name":"Patrick Walter","children":[{"id":28,"name":"Antony Lopes Marek","role":"Sales Manager","function":"Sales Manager","geo":"DACH", "sales_productivity": 400000},{"id":29,"name":"Tselmuun Otgonbayar","role":"Sales Manager","function":"Sales Manager","geo":"DACH", "sales_productivity": 400000},{"id":30,"name":"Felix Rueckl","role":"Sales Manager","function":"Sales Manager","geo":"DACH", "sales_productivity": 400000},{"id":31,"name":"Patrick Coyle","role":"Sr. Sales Manager","function":"Sr. Sales Manager","geo":"DACH"},{"id":38,"name":"Hiring","role":"SDR","function":"SDR","geo":"DACH"}],"role":"Sales Director","function":"Sales Director","geo":"DACH"}]};
+        
+        processNode(initialRawData);
+        const initialOrgData = JSON.parse(JSON.stringify(initialRawData));
+        
+        let orgData = JSON.parse(JSON.stringify(initialOrgData));
+        let currentDisplayData = orgData;
+
+        // --- D3 CHART SETUP ---
+        const chartContainer = document.getElementById('chart-container');
+        const svg = d3.select("#org-chart-svg");
+        const g = svg.append("g");
+        const treeLayout = d3.tree().nodeSize([200, 250]);
+        let selectedNode = null;
+        let nextId = 40;
+        let modalMode = 'add';
+
+        // --- UI & STATE ---
+        const addRoleBtn = document.getElementById('add-role-btn');
+        const editRoleBtn = document.getElementById('edit-role-btn');
+        const removeRoleBtn = document.getElementById('remove-role-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const csvUpload = document.getElementById('csv-upload');
+        const selectionPanel = document.getElementById('selection-panel');
+        const modal = document.getElementById('role-modal');
+        const roleForm = document.getElementById('role-form');
+        const cancelModalBtn = document.getElementById('cancel-modal-btn');
+        const geoFilterContainer = document.getElementById('geo-filter-container');
+        const functionFilterContainer = document.getElementById('function-filter-container');
+        const clearFiltersBtn = document.getElementById('clear-filters-btn');
+
+        // --- GEO TO FLAG MAPPING ---
+        const geoFlags = { "UK": "🇬🇧", "DACH": "🇩🇪", "IL": "🇮🇱", "France": "🇫🇷", "Spain": "🇪🇸", "CEE": "🇪🇺", "Italy": "🇮🇹", "Multi": "🌍", "Global": "🌍" };
+
+        // --- ZOOM & PAN ---
+        const zoom = d3.zoom().scaleExtent([0.1, 2]).on("zoom", (event) => g.attr("transform", event.transform));
+        svg.call(zoom);
+
+        // --- CORE FUNCTIONS ---
+        function updateChart(sourceNode) {
+            if (!currentDisplayData) {
+                g.selectAll("*").remove();
+                updateStats();
+                return;
+            }
+            const duration = 250;
+            const root = d3.hierarchy(currentDisplayData);
+            treeLayout(root);
+            const sourceForExit = sourceNode || root;
+
+            const nodesData = root.descendants();
+            const linksData = root.links();
+            
+            nodesData.forEach(d => { d.y = d.depth * 200 });
+
+            const nodes = g.selectAll("g.node").data(nodesData, d => d.data.id);
+
+            const nodeEnter = nodes.enter().append("g")
+                .attr("class", "node")
+                .attr("transform", `translate(${sourceNode ? sourceNode.x0 : root.x},${sourceNode ? sourceNode.y0 : root.y})`)
+                .on("click", (event, d) => {
+                    if (event.target.tagName !== 'circle' || !event.target.classList.contains('exp-coll-btn')) { handleNodeClick(d); }
+                });
+
+            nodeEnter.append("rect").attr("width", 240).attr("height", 80).attr("x", -120).attr("y", -40).attr("rx", 8).attr("ry", 8);
+            nodeEnter.append("text").attr("class", "role").attr("dy", "-20px").attr("x", 0).attr("text-anchor", "middle");
+            nodeEnter.append("text").attr("class", "name").attr("dy", "0px").attr("x", 0).attr("text-anchor", "middle").style("fill", "#475569");
+            nodeEnter.append("text").attr("class", "details").attr("dy", "20px").attr("x", 0).attr("text-anchor", "middle").style("fill", "#64748b");
+            nodeEnter.append("circle").attr("class", "exp-coll-btn").attr("cy", 40).attr("r", 10).on("click", (event, d) => { event.stopPropagation(); toggleChildren(d); });
+
+            const allNodes = nodeEnter.merge(nodes);
+
+            allNodes.transition().duration(duration).attr("transform", d => `translate(${d.x},${d.y})`);
+            allNodes.attr("class", d => `node ${selectedNode && selectedNode.id === d.data.id ? 'selected' : ''} ${d.data.toRemove ? 'to-remove' : ''}`);
+            allNodes.select("rect").style("fill", d => d.data.name && d.data.name.toLowerCase() !== 'vacant' ? "#ffffff" : "#f1f5f9").style("stroke", d => d.data.name && d.data.name.toLowerCase() !== 'vacant' ? "#94a3b8" : "#e2e8f0");
+            allNodes.select(".role").text(d => d.data.role);
+            allNodes.select(".name").text(d => `${geoFlags[d.data.geo] || '🏳️'} ${d.data.name || 'Vacant'}`);
+            allNodes.select(".details").text(d => {
+                const originalNode = findNodeById(orgData, d.data.id);
+                const children = originalNode.children || originalNode._children || [];
+                const activeChildren = children.filter(c => !c.toRemove);
+                if (activeChildren.length > 0) {
+                    return `${activeChildren.length} Directs`;
+                }
+                return `Productivity: ${d.data.productivity} | Sales: ${d.data.sales_productivity}`;
+            });
+            allNodes.select(".exp-coll-btn")
+                .attr("fill", d => d.data._children ? "#60a5fa" : "#fff")
+                .attr("stroke", d => d.data._children ? "#2563eb" : "#94a3b8")
+                .style("display", d => (d.data.children || d.data._children) ? "block" : "none");
+
+            nodes.exit().transition().duration(duration).attr("transform", `translate(${sourceForExit.x},${sourceForExit.y})`).remove();
+            
+            nodesData.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
+
+            const links = g.selectAll("path.link").data(linksData, d => d.target.data.id);
+            const linkEnter = links.enter().insert("path", "g").attr("class", "link").attr("d", d => {
+                const o = {x: sourceNode ? sourceNode.x0 : root.x, y: sourceNode ? sourceNode.y0 : root.y};
+                return `M${o.x},${o.y}C${o.x},${o.y} ${o.x},${o.y} ${o.x},${o.y}`;
+            });
+            linkEnter.merge(links).transition().duration(duration).attr("d", d => `M${d.source.x},${d.source.y + 40} V${d.target.y - 60} H${d.target.x} V${d.target.y - 40}`);
+            links.exit().transition().duration(duration).attr("d", d => {
+                const o = {x: sourceForExit.x, y: sourceForExit.y};
+                return `M${o.x},${o.y}C${o.x},${o.y} ${o.x},${o.y} ${o.x},${o.y}`;
+            }).remove();
+
+            updateStats();
+        }
+
+        function toggleChildren(d) {
+            if (d.data.children) {
+                d.data._children = d.data.children;
+                d.data.children = null;
+            } else {
+                d.data.children = d.data._children;
+                d.data._children = null;
+            }
+            updateChart(d);
+        }
+
+        function updateStats() {
+            let managers = 0, ics = 0, salesProd = 0, totalProductiveHC = 0;
+            
+            function countRecursive(node) {
+                if (!node || node.toRemove) return;
+                
+                totalProductiveHC += node.productivity || 0;
+                salesProd += node.sales_productivity || 0;
+                
+                const children = (node.children || node._children || []).filter(c => !c.toRemove);
+                
+                if (children.length > 0) {
+                    managers++;
+                    children.forEach(countRecursive);
+                } else {
+                    ics++;
+                }
+            }
+            
+            if (currentDisplayData) {
+                 countRecursive(currentDisplayData);
+            }
+           
+            document.getElementById('total-managers').textContent = managers;
+            document.getElementById('total-ics').textContent = ics;
+            document.getElementById('total-productive-hc').textContent = totalProductiveHC.toFixed(1);
+            document.getElementById('total-sales-productivity').textContent = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(salesProd);
+        }
+
+        function handleNodeClick(node) {
+            selectedNode = (selectedNode && selectedNode.id === node.data.id) ? null : node.data;
+            updateUIState();
+            updateChart(node);
+        }
+
+        function updateUIState() {
+            if (selectedNode) {
+                selectionPanel.classList.remove('hidden');
+                document.getElementById('selected-role-name').textContent = selectedNode.name || 'Vacant';
+                addRoleBtn.disabled = false;
+                editRoleBtn.disabled = false;
+                removeRoleBtn.disabled = false;
+            } else {
+                selectionPanel.classList.add('hidden');
+                addRoleBtn.disabled = true;
+                editRoleBtn.disabled = true;
+                removeRoleBtn.disabled = true;
+            }
+        }
+        
+        function showModal(mode, nodeData = null) {
+            modalMode = mode;
+            roleForm.reset();
+            if (mode === 'edit' && nodeData) {
+                document.getElementById('modal-title').textContent = 'Edit Role';
+                document.getElementById('role-title').value = nodeData.role;
+                document.getElementById('role-name').value = nodeData.name;
+                document.getElementById('role-function').value = nodeData.function;
+                document.getElementById('role-geo').value = nodeData.geo;
+                document.getElementById('role-productivity').value = nodeData.productivity;
+                document.getElementById('role-sales-productivity').value = nodeData.sales_productivity;
+            } else {
+                document.getElementById('modal-title').textContent = 'Add New Role';
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function findNodeById(node, id) {
+            if (!node) return null;
+            if (node.id === id) return node;
+            const children = node.children || node._children || [];
+            for (const child of children) {
+                const found = findNodeById(child, id);
+                if (found) return found;
+            }
+            return null;
+        }
+
+        function populateFilters(data) {
+            const geos = new Set();
+            const functions = new Set();
+            const excludedGeos = ["Global", "Multi"];
+            const excludedFunctions = ["Executive"];
+
+            d3.hierarchy(data).each(d => {
+                if (!excludedGeos.includes(d.data.geo)) geos.add(d.data.geo);
+                if (!excludedFunctions.includes(d.data.function)) functions.add(d.data.function);
+            });
+            
+            const createCheckboxes = (container, items) => {
+                container.innerHTML = [...items].sort().map(item => `
+                    <div class="flex items-center">
+                        <input id="filter-${item.replace(/\s+/g, '-')}" name="${item}" value="${item}" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="filter-${item.replace(/\s+/g, '-')}" class="ml-2 block text-sm text-gray-900">${item}</label>
+                    </div>
+                `).join('');
+                container.querySelectorAll('input').forEach(cb => cb.addEventListener('change', applyFilters));
+            };
+
+            createCheckboxes(geoFilterContainer, geos);
+            createCheckboxes(functionFilterContainer, functions);
+        }
+        
+        function applyFilters() {
+            const selectedGeos = Array.from(geoFilterContainer.querySelectorAll('input:checked')).map(cb => cb.value);
+            const selectedFunctions = Array.from(functionFilterContainer.querySelectorAll('input:checked')).map(cb => cb.value);
+
+            function filterRecursive(node) {
+                if (!node) return null;
+                const children = (node.children || []).map(filterRecursive).filter(n => n);
+                const geoMatch = selectedGeos.length === 0 || selectedGeos.includes(node.geo);
+                const funcMatch = selectedFunctions.length === 0 || selectedFunctions.includes(node.function);
+                if ((geoMatch && funcMatch) || children.length > 0) {
+                    return {...node, children: children};
+                }
+                return null;
+            }
+            currentDisplayData = filterRecursive(JSON.parse(JSON.stringify(orgData)));
+            updateChart();
+        }
+
+        // --- EVENT LISTENERS ---
+        addRoleBtn.addEventListener('click', () => selectedNode && showModal('add'));
+        editRoleBtn.addEventListener('click', () => selectedNode && showModal('edit', selectedNode));
+        removeRoleBtn.addEventListener('click', () => {
+            if (selectedNode) {
+                const node = findNodeById(orgData, selectedNode.id);
+                node.toRemove = !node.toRemove;
+                applyFilters();
+            }
+        });
+        resetBtn.addEventListener('click', () => {
+            orgData = JSON.parse(JSON.stringify(initialOrgData));
+            selectedNode = null;
+            updateUIState();
+            clearFiltersBtn.click();
+        });
+        cancelModalBtn.addEventListener('click', () => modal.classList.add('hidden'));
+        roleForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!selectedNode && modalMode !== 'add') return;
+
+            const values = {
+                role: document.getElementById('role-title').value,
+                name: document.getElementById('role-name').value || 'Vacant',
+                function: document.getElementById('role-function').value,
+                geo: document.getElementById('role-geo').value,
+                productivity: parseFloat(document.getElementById('role-productivity').value),
+                sales_productivity: parseInt(document.getElementById('role-sales-productivity').value, 10)
+            };
+
+            if (modalMode === 'add') {
+                if (!selectedNode) return;
+                const parentNode = findNodeById(orgData, selectedNode.id);
+                if (!parentNode.children) parentNode.children = [];
+                parentNode.children.push({ id: nextId++, ...values });
+            } else {
+                const nodeToEdit = findNodeById(orgData, selectedNode.id);
+                Object.assign(nodeToEdit, values);
+                selectedNode = nodeToEdit;
+            }
+            
+            modal.classList.add('hidden');
+            processNode(orgData);
+            populateFilters(orgData);
+            applyFilters();
+        });
+        csvUpload.addEventListener('change', (event) => { /* ... existing CSV logic ... */ });
+        
+        clearFiltersBtn.addEventListener('click', () => {
+            document.querySelectorAll('#geo-filter-container input, #function-filter-container input').forEach(cb => cb.checked = true);
+            applyFilters();
+        });
+
+        // --- RESPONSIVENESS & INITIALIZATION ---
+        const resizeObserver = new ResizeObserver(entries => {
+            const { width } = entries[0].contentRect;
+            const initialTransform = d3.zoomIdentity.translate(width / 2, 100).scale(0.7);
+            svg.call(zoom.transform, initialTransform);
+        });
+        resizeObserver.observe(chartContainer);
+        
+        updateUIState();
+        populateFilters(orgData);
+        updateChart();
+    </script>
+</body>
+</html>
