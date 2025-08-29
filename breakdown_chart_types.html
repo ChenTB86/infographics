@@ -20,7 +20,7 @@
         }
         .chart-container {
             transition: all 0.3s ease-in-out;
-            min-height: 450px;
+            min-height: 500px; /* Increased height for legend */
         }
         .filter-select, .chart-toggle button {
             transition: all 0.2s ease;
@@ -59,7 +59,7 @@
 
         <!-- Controls -->
         <div class="bg-white p-4 rounded-xl shadow-md mb-8">
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-center">
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 items-start">
                 
                 <!-- Filters -->
                 <div class="md:col-span-3 lg:col-span-2">
@@ -96,15 +96,21 @@
                     </div>
                 </div>
 
-                <!-- CSV Upload -->
+                <!-- Data Controls -->
                 <div class="lg:col-span-1">
-                     <h3 class="text-lg font-semibold mb-2 text-gray-700">Upload Data</h3>
-                    <label for="csv-upload" class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
-                        Upload CSV
-                    </label>
-                    <input type="file" id="csv-upload" class="hidden" accept=".csv">
-                    <p id="file-name" class="text-xs text-gray-500 mt-1 truncate"></p>
+                     <h3 class="text-lg font-semibold mb-2 text-gray-700">Data Controls</h3>
+                     <div class="flex flex-col space-y-2">
+                        <label for="csv-upload" class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                            Upload CSV
+                        </label>
+                        <input type="file" id="csv-upload" class="hidden" accept=".csv">
+                        <button id="csv-download" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                            Download CSV
+                        </button>
+                        <p id="file-name" class="text-xs text-gray-500 mt-1 truncate"></p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -127,6 +133,27 @@
             metric: 'share_of_budget',
             chartType: 'column',
         };
+        
+        // --- FORMATTING HELPER ---
+        function formatMetric(value, metricName) {
+            if (value === null || typeof value === 'undefined' || isNaN(value)) return 'N/A';
+            try {
+                switch (metricName) {
+                    case 'share_of_budget':
+                        return new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 0 }).format(value);
+                    case 'ctr':
+                    case 'cvr':
+                        return new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
+                    case 'cpa':
+                        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
+                    default:
+                        return value.toFixed(2);
+                }
+            } catch (e) {
+                console.error("Formatting error for", value, metricName, e);
+                return value;
+            }
+        }
 
         // --- MOCK DATA GENERATION ---
         function generateMockData() {
@@ -136,10 +163,7 @@
             const supply_types = ['editorial', 'mail', 'lockscreen', 'carrier content apps'];
             const platforms = ['mobile', 'desktop', 'tablet'];
             const formats = ['native - static', 'native-motion', 'display - 200X300', 'display - other'];
-
             let data = [];
-            
-            // Helper to generate random metric values
             const randomMetric = (base, variance) => Math.max(0, base + (Math.random() - 0.5) * variance);
 
             advertisers.forEach(adv => {
@@ -148,36 +172,32 @@
                         supply_types.forEach(st => {
                             platforms.forEach(p => {
                                 formats.forEach(f => {
-                                    const budget_adv = Math.random();
-                                    const budget_net = Math.random();
-                                    const ctr_adv = randomMetric(0.02, 0.015);
-                                    const ctr_net = randomMetric(0.018, 0.01);
-                                    const cvr_adv = randomMetric(0.05, 0.04);
-                                    const cvr_net = randomMetric(0.045, 0.03);
+                                    let budget_adv_factor = 1, ctr_adv_factor = 1, cvr_adv_factor = 1, cpa_adv_factor = 1;
                                     
+                                    // Create "interesting" profiles
+                                    if (adv === 'NIKE') { // Strong on mobile, MSFT, native-motion. High CTR, high CPA.
+                                        budget_adv_factor = (p === 'mobile' ? 1.8 : 0.7) * (pr === 'MSFT' ? 1.6 : 0.8) * (f === 'native-motion' ? 2.0 : 0.6);
+                                        ctr_adv_factor = 1.3; cvr_adv_factor = 1.1; cpa_adv_factor = 1.4;
+                                    } else if (adv === 'Adidas') { // Focus on desktop, display, traditional pubs. Balanced.
+                                        budget_adv_factor = (p === 'desktop' ? 2.0 : 0.6) * (pr === 'Traditional Pubs' ? 1.5 : 0.9) * (f.includes('display') ? 1.7 : 0.7);
+                                        ctr_adv_factor = 1.0; cvr_adv_factor = 1.05; cpa_adv_factor = 0.9;
+                                    } else if (adv === 'Puma') { // Niche strategy: high CVR on lockscreen/mail, low CPA.
+                                        budget_adv_factor = (st === 'lockscreen' ? 2.2 : 0.8) * (st === 'mail' ? 1.8 : 0.9);
+                                        ctr_adv_factor = 0.85; cvr_adv_factor = 1.5; cpa_adv_factor = 0.7;
+                                    }
+
                                     data.push({
-                                        advertiser: adv,
-                                        traffic_geo: geo,
-                                        publisher_region: pr,
-                                        supply_type: st,
-                                        platform: p,
-                                        format: f,
-                                        share_of_budget: budget_adv,
-                                        ctr: ctr_adv,
-                                        cvr: cvr_adv,
-                                        cpa: randomMetric(10, 8),
+                                        advertiser: adv, traffic_geo: geo, publisher_region: pr, supply_type: st, platform: p, format: f,
+                                        share_of_budget: randomMetric(0.1, 0.08) * budget_adv_factor,
+                                        ctr: randomMetric(0.02, 0.01) * ctr_adv_factor,
+                                        cvr: randomMetric(0.05, 0.02) * cvr_adv_factor,
+                                        cpa: randomMetric(10, 5) * cpa_adv_factor,
                                     });
-                                    // Add corresponding network data
-                                     data.push({
-                                        advertiser: 'Network Wide',
-                                        traffic_geo: geo,
-                                        publisher_region: pr,
-                                        supply_type: st,
-                                        platform: p,
-                                        format: f,
-                                        share_of_budget: budget_net,
-                                        ctr: ctr_net,
-                                        cvr: cvr_net,
+                                    data.push({
+                                        advertiser: 'Network Wide', traffic_geo: geo, publisher_region: pr, supply_type: st, platform: p, format: f,
+                                        share_of_budget: randomMetric(0.1, 0.08),
+                                        ctr: randomMetric(0.018, 0.01),
+                                        cvr: randomMetric(0.045, 0.03),
                                         cpa: randomMetric(12, 7),
                                     });
                                 });
@@ -186,19 +206,19 @@
                     });
                 });
             });
-            // Normalize share_of_budget to sum to 1 for each advertiser/geo combination
+
+            // Normalize share_of_budget
             const normalizedData = [];
             const groups = d3.group(data, d => d.advertiser, d => d.traffic_geo);
             groups.forEach(geoGroup => {
                 geoGroup.forEach(advData => {
                     const totalBudget = d3.sum(advData, d => d.share_of_budget);
                     advData.forEach(row => {
-                        row.share_of_budget = row.share_of_budget / totalBudget;
+                        row.share_of_budget = totalBudget > 0 ? row.share_of_budget / totalBudget : 0;
                         normalizedData.push(row);
                     })
                 });
             });
-
             return normalizedData;
         }
 
@@ -206,21 +226,13 @@
         document.addEventListener('DOMContentLoaded', () => {
             rawData = generateMockData();
             initializeApp();
-
-            // Event Listeners
-            document.getElementById('advertiser-filter').addEventListener('change', (e) => {
-                state.advertiser = e.target.value;
-                renderAllCharts();
-            });
-            document.getElementById('geo-filter').addEventListener('change', (e) => {
-                state.traffic_geo = e.target.value;
-                renderAllCharts();
-            });
-            document.getElementById('metric-filter').addEventListener('change', (e) => {
-                state.metric = e.target.value;
-                renderAllCharts();
-            });
-            document.getElementById('chart-type-toggle').addEventListener('click', (e) => {
+            
+            document.getElementById('advertiser-filter').addEventListener('change', e => { state.advertiser = e.target.value; renderAllCharts(); });
+            document.getElementById('geo-filter').addEventListener('change', e => { state.traffic_geo = e.target.value; renderAllCharts(); });
+            document.getElementById('metric-filter').addEventListener('change', e => { state.metric = e.target.value; renderAllCharts(); });
+            document.getElementById('csv-upload').addEventListener('change', handleFileUpload);
+            document.getElementById('csv-download').addEventListener('click', handleDownloadCSV);
+            document.getElementById('chart-type-toggle').addEventListener('click', e => {
                 if (e.target.tagName === 'BUTTON') {
                     document.querySelectorAll('#chart-type-toggle button').forEach(btn => btn.classList.remove('active'));
                     e.target.classList.add('active');
@@ -228,9 +240,27 @@
                     renderAllCharts();
                 }
             });
-            document.getElementById('csv-upload').addEventListener('change', handleFileUpload);
         });
         
+        // --- TEXT WRAPPING HELPER ---
+        function wrapLabels(labels, maxLength = 15) {
+            return labels.map(label => {
+                if (typeof label !== 'string' || label.length <= maxLength) return label;
+                const words = label.split(' ');
+                let currentLine = '';
+                const lines = [];
+                for (const word of words) {
+                    if ((currentLine + word).length > maxLength && currentLine.length > 0) {
+                        lines.push(currentLine.trim());
+                        currentLine = '';
+                    }
+                    currentLine += word + ' ';
+                }
+                lines.push(currentLine.trim());
+                return lines.join('<br>');
+            });
+        }
+
         function initializeApp() {
             populateFilters();
             createChartContainers();
@@ -240,26 +270,25 @@
         function populateFilters() {
             const advertisers = [...new Set(rawData.map(d => d.advertiser))].filter(d => d !== 'Network Wide').sort();
             const geos = ['All', ...new Set(rawData.map(d => d.traffic_geo))].sort();
-
             const advFilter = document.getElementById('advertiser-filter');
             advFilter.innerHTML = advertisers.map(a => `<option value="${a}">${a}</option>`).join('');
             state.advertiser = advertisers[0];
-
             const geoFilter = document.getElementById('geo-filter');
             geoFilter.innerHTML = geos.map(g => `<option value="${g}">${g}</option>`).join('');
         }
 
         function createChartContainers() {
             const grid = document.getElementById('charts-grid');
-            grid.innerHTML = ''; // Clear existing
+            grid.innerHTML = '';
             DIMENSIONS.forEach(dim => {
                 const title = dim.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
                 const container = document.createElement('div');
-                container.className = 'chart-container bg-white p-4 rounded-xl shadow-md';
+                container.className = 'chart-container bg-white p-4 rounded-xl shadow-md flex flex-col';
                 container.innerHTML = `
                     <h3 class="text-lg font-semibold text-gray-800 mb-2">${title}</h3>
-                    <div id="chart-${dim}" class="w-full h-full min-h-[400px]"></div>
-                    <div id="loader-${dim}" class="loader-container hidden items-center justify-center min-h-[400px]"><div class="loader"></div></div>
+                    <div id="chart-${dim}" class="w-full flex-grow"></div>
+                    <div id="loader-${dim}" class="loader-container hidden items-center justify-center flex-grow"><div class="loader"></div></div>
+                    <div id="callout-${dim}" class="text-sm text-gray-700 mt-3 p-3 bg-gray-50 rounded-md border border-gray-200"></div>
                 `;
                 grid.appendChild(container);
             });
@@ -268,48 +297,40 @@
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             document.getElementById('file-name').textContent = file.name;
-            
             Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                dynamicTyping: true,
-                complete: function(results) {
-                    console.log("CSV Parsed:", results.data);
-                    rawData = results.data;
-                    initializeApp();
-                },
-                error: function(error) {
-                    console.error("CSV Parsing Error:", error);
-                    alert("Error parsing CSV file. Please check the console for details.");
-                }
+                header: true, skipEmptyLines: true, dynamicTyping: true,
+                complete: (results) => { rawData = results.data; initializeApp(); },
+                error: (error) => { console.error("CSV Parsing Error:", error); alert("Error parsing CSV file."); }
             });
+        }
+        
+        function handleDownloadCSV() {
+            const csv = Papa.unparse(rawData);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "advertiser_data.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
         
         // --- DATA PROCESSING ---
-        function filterData() {
-            return rawData.filter(d => {
-                const geoMatch = state.traffic_geo === 'All' || d.traffic_geo === state.traffic_geo;
-                const advertiserMatch = d.advertiser === state.advertiser || d.advertiser === 'Network Wide';
-                return geoMatch && advertiserMatch;
-            });
-        }
+        const filterData = () => rawData.filter(d => (state.traffic_geo === 'All' || d.traffic_geo === state.traffic_geo) && (d.advertiser === state.advertiser || d.advertiser === 'Network Wide'));
         
         function processDataForDimension(filteredData, dimension) {
             const grouped = d3.group(filteredData, d => d[dimension], d => d.advertiser);
-            
             const result = [];
             grouped.forEach((advertiserGroup, dimValue) => {
                 const advData = advertiserGroup.get(state.advertiser);
                 const netData = advertiserGroup.get('Network Wide');
-                
                 if (advData && netData) {
                     result.push({
                         dimensionValue: dimValue,
                         advertiserMetric: d3.mean(advData, d => d[state.metric]),
                         networkMetric: d3.mean(netData, d => d[state.metric]),
-                        // For bubble chart
                         bubbleSizeMetric: d3.mean(advData, d => d.ctr),
                         bubbleColorMetric: d3.mean(advData, d => d.cvr),
                     });
@@ -324,7 +345,41 @@
             DIMENSIONS.forEach(dim => {
                 const chartData = processDataForDimension(filteredData, dim);
                 renderChart(dim, chartData);
+                renderCallouts(dim, chartData);
             });
+        }
+
+        function renderCallouts(dimension, data) {
+            const calloutDiv = document.getElementById(`callout-${dimension}`);
+            if (!data || data.length < 2) {
+                calloutDiv.innerHTML = '<em>Not enough data for comparison.</em>';
+                return;
+            }
+
+            const isLowerBetter = state.metric === 'cpa';
+            let bestGap = { value: -Infinity, label: '', rawDiff: 0 };
+            let worstGap = { value: Infinity, label: '', rawDiff: 0 };
+
+            data.forEach(d => {
+                const diff = d.advertiserMetric - d.networkMetric;
+                const performanceGap = isLowerBetter ? -diff : diff;
+                if (performanceGap > bestGap.value) { bestGap = { value: performanceGap, label: d.dimensionValue, rawDiff: diff }; }
+                if (performanceGap < worstGap.value) { worstGap = { value: performanceGap, label: d.dimensionValue, rawDiff: diff }; }
+            });
+            
+            let calloutText = '';
+            if (bestGap.label && bestGap.value > 0) {
+                const formattedDiff = formatMetric(Math.abs(bestGap.rawDiff), state.metric);
+                const comparison = isLowerBetter ? 'better' : 'higher';
+                calloutText += `<strong>Top Performer:</strong> ${bestGap.label} (${comparison} by ${formattedDiff}). `;
+            } else { calloutText += `No significant outperformance. `; }
+
+            if (worstGap.label && bestGap.label !== worstGap.label && worstGap.value < 0) {
+                const formattedDiff = formatMetric(Math.abs(worstGap.rawDiff), state.metric);
+                const comparison = isLowerBetter ? 'worse' : 'lower';
+                 calloutText += `<strong>Improvement Area:</strong> ${worstGap.label} (${comparison} by ${formattedDiff}).`;
+            }
+            calloutDiv.innerHTML = calloutText;
         }
         
         function renderChart(dimension, data) {
@@ -333,95 +388,74 @@
             const chartElement = document.getElementById(chartDiv);
             
             if (!data || data.length === 0) {
-                 chartElement.innerHTML = `<div class="flex items-center justify-center h-full text-gray-500">No data available for the current selection.</div>`;
+                 chartElement.innerHTML = `<div class="flex items-center justify-center h-full text-gray-500">No data for current selection.</div>`;
                  return;
             }
 
-            loaderDiv.classList.remove('hidden');
-            loaderDiv.classList.add('flex');
-            chartElement.classList.add('hidden');
+            loaderDiv.classList.remove('hidden'); loaderDiv.classList.add('flex'); chartElement.classList.add('hidden');
 
-            let plotData;
-            let layout;
-            const labels = data.map(d => d.dimensionValue);
+            const originalLabels = data.map(d => d.dimensionValue);
+            const labels = wrapLabels(originalLabels); // Wrap long labels
             const advertiserValues = data.map(d => d.advertiserMetric);
             const networkValues = data.map(d => d.networkMetric);
-
             const metricTitle = state.metric.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            const advertiserName = state.advertiser;
-            
             const baseLayout = {
-                margin: { l: 60, r: 30, b: 120, t: 40 },
-                legend: { x: 0, y: 1.1, orientation: 'h' },
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { l: 60, r: 30, b: 180, t: 40 }, // Increased bottom margin for wrapped labels
+                legend: { x: 0.5, y: -0.5, xanchor: 'center', orientation: 'h' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
                 font: { family: 'Inter, sans-serif', color: '#374151' },
-                xaxis: { automargin: true },
+                xaxis: { 
+                    automargin: true
+                }, 
                 yaxis: { automargin: true }
             };
 
+            let plotData, layout;
             switch (state.chartType) {
                 case 'column':
                     plotData = [
-                        { x: labels, y: advertiserValues, name: advertiserName, type: 'bar', marker: { color: '#10B981' } },
+                        { x: labels, y: advertiserValues, name: state.advertiser, type: 'bar', marker: { color: '#10B981' } },
                         { x: labels, y: networkValues, name: 'Network Benchmark', type: 'bar', marker: { color: '#6B7280' } }
                     ];
                     layout = { ...baseLayout, barmode: 'group', title: `${metricTitle}`, yaxis: { title: metricTitle } };
                     break;
                 case 'treemap':
-                    plotData = [{
-                        type: 'treemap',
-                        labels: labels,
-                        parents: Array(labels.length).fill(""),
-                        values: advertiserValues,
-                        textinfo: 'label+value+percent root',
-                        marker: { colorscale: 'Emeralds' }
-                    }];
-                     layout = { ...baseLayout, title: `${metricTitle} for ${advertiserName}` };
+                    plotData = [{ type: 'treemap', labels: labels, parents: Array(labels.length).fill(""), values: advertiserValues, textinfo: 'label+value+percent root', marker: { colorscale: 'Emeralds' } }];
+                    layout = { ...baseLayout, title: `${metricTitle} for ${state.advertiser}` };
                     break;
                 case 'radar':
                      plotData = [
-                        { type: 'scatterpolar', r: advertiserValues, theta: labels, fill: 'toself', name: advertiserName, marker: { color: '#10B981' } },
+                        { type: 'scatterpolar', r: advertiserValues, theta: labels, fill: 'toself', name: state.advertiser, marker: { color: '#10B981' } },
                         { type: 'scatterpolar', r: networkValues, theta: labels, fill: 'toself', name: 'Network Benchmark', marker: { color: '#6B7280' }, opacity: 0.6 }
                     ];
-                    layout = { ...baseLayout, title: `${metricTitle}`, polar: { radialaxis: { visible: true, range: [0, Math.max(...advertiserValues, ...networkValues) * 1.1] } } };
+                    layout = { ...baseLayout, title: `${metricTitle}`, polar: { radialaxis: { visible: true, range: [0, Math.max(...advertiserValues.concat(networkValues)) * 1.1] } } };
                     break;
                 case 'bubble':
-                    const sizes = data.map(d => d.bubbleSizeMetric * 2000); // Scale factor for visibility
-                    const colors = data.map(d => d.bubbleColorMetric);
                     const hoverText = data.map(d => 
                         `<b>${d.dimensionValue}</b><br>` +
-                        `${metricTitle}: ${d.advertiserMetric.toFixed(2)}<br>` +
-                        `CTR: ${(d.bubbleSizeMetric * 100).toFixed(2)}%<br>`+
-                        `CVR: ${(d.bubbleColorMetric * 100).toFixed(2)}%`
+                        `${metricTitle}: ${formatMetric(d.advertiserMetric, state.metric)}<br>` +
+                        `CTR: ${formatMetric(d.bubbleSizeMetric, 'ctr')}<br>`+
+                        `CVR: ${formatMetric(d.bubbleColorMetric, 'cvr')}`
                     );
                     plotData = [{
-                        x: labels,
-                        y: advertiserValues,
-                        mode: 'markers',
+                        x: labels, y: advertiserValues, mode: 'markers', text: hoverText, hoverinfo: 'text', name: state.advertiser,
                         marker: {
-                            size: sizes,
-                            color: colors,
-                            colorscale: 'Emeralds',
-                            showscale: true,
-                            colorbar: { title: 'CVR' }
+                            size: data.map(d => d.bubbleSizeMetric * 2500 + 5), color: data.map(d => d.bubbleColorMetric),
+                            colorscale: 'Emeralds', showscale: true, colorbar: { title: 'CVR' }
                         },
-                        text: hoverText,
-                        hoverinfo: 'text',
-                        name: advertiserName
                     }];
                     layout = { ...baseLayout, title: `${metricTitle} vs. Performance`, yaxis: { title: metricTitle }, xaxis: { title: dimension.replace('_', ' ') } };
                     break;
             }
             
             setTimeout(() => {
-                Plotly.newPlot(chartDiv, plotData, layout, {responsive: true});
-                loaderDiv.classList.add('hidden');
-                loaderDiv.classList.remove('flex');
-                chartElement.classList.remove('hidden');
-            }, 200); // Simulate loading and allow UI to update
+                Plotly.newPlot(chartDiv, plotData, layout, {responsive: true, displaylogo: false});
+                loaderDiv.classList.add('hidden'); loaderDiv.classList.remove('flex'); chartElement.classList.remove('hidden');
+            }, 200);
         }
     </script>
 </body>
 </html>
+
+
 
