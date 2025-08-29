@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advertiser Budget Allocation Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- D3.js (often a dependency or useful alongside Plotly) -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- Plotly.js for charting -->
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    
+    <style>
+        /* Custom styles for a polished look */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chart-container {
+            transition: all 0.3s ease-in-out;
+            min-height: 450px;
+        }
+        .filter-select, .chart-toggle button {
+            transition: all 0.2s ease;
+        }
+        .chart-toggle button.active {
+            background-color: #10B981; /* Emerald 500 */
+            color: white;
+            font-weight: 600;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Advertiser Performance Dashboard</h1>
+            <p class="text-gray-600 mt-1">Visualize budget allocation and performance against network benchmarks.</p>
+        </header>
+
+        <!-- Controls -->
+        <div class="bg-white p-4 rounded-xl shadow-md mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-center">
+                
+                <!-- Filters -->
+                <div class="md:col-span-3 lg:col-span-2">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700">Filters</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label for="advertiser-filter" class="block text-sm font-medium text-gray-600">Advertiser</label>
+                            <select id="advertiser-filter" class="filter-select mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"></select>
+                        </div>
+                        <div>
+                            <label for="geo-filter" class="block text-sm font-medium text-gray-600">Traffic Geo</label>
+                            <select id="geo-filter" class="filter-select mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"></select>
+                        </div>
+                         <div>
+                            <label for="metric-filter" class="block text-sm font-medium text-gray-600">Metric</label>
+                            <select id="metric-filter" class="filter-select mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md">
+                                <option value="share_of_budget">Share of Budget</option>
+                                <option value="ctr">CTR</option>
+                                <option value="cvr">CVR</option>
+                                <option value="cpa">CPA</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart Type Toggle -->
+                <div class="lg:col-span-2">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700">Visualization Type</h3>
+                    <div id="chart-type-toggle" class="chart-toggle inline-flex rounded-md shadow-sm">
+                        <button type="button" data-type="column" class="active relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500">Column</button>
+                        <button type="button" data-type="treemap" class="relative inline-flex items-center px-4 py-2 border-t border-b border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500">Treemap</button>
+                        <button type="button" data-type="radar" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500">Radar</button>
+                        <button type="button" data-type="bubble" class="relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500">Bubble</button>
+                    </div>
+                </div>
+
+                <!-- CSV Upload -->
+                <div class="lg:col-span-1">
+                     <h3 class="text-lg font-semibold mb-2 text-gray-700">Upload Data</h3>
+                    <label for="csv-upload" class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                        Upload CSV
+                    </label>
+                    <input type="file" id="csv-upload" class="hidden" accept=".csv">
+                    <p id="file-name" class="text-xs text-gray-500 mt-1 truncate"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div id="charts-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Chart containers will be dynamically inserted here -->
+        </div>
+
+    </div>
+
+    <script>
+        // --- DATA ---
+        let rawData = [];
+        const DIMENSIONS = ['publisher_region', 'supply_type', 'platform', 'format'];
+        
+        const state = {
+            advertiser: '',
+            traffic_geo: 'All',
+            metric: 'share_of_budget',
+            chartType: 'column',
+        };
+
+        // --- MOCK DATA GENERATION ---
+        function generateMockData() {
+            const advertisers = ['NIKE', 'Adidas', 'Puma'];
+            const geos = ['US', 'UK', 'DE', 'FR'];
+            const publisher_regions = ['MSFT', 'Yahoo', 'Traditional Pubs', 'Carriers'];
+            const supply_types = ['editorial', 'mail', 'lockscreen', 'carrier content apps'];
+            const platforms = ['mobile', 'desktop', 'tablet'];
+            const formats = ['native - static', 'native-motion', 'display - 200X300', 'display - other'];
+
+            let data = [];
+            
+            // Helper to generate random metric values
+            const randomMetric = (base, variance) => Math.max(0, base + (Math.random() - 0.5) * variance);
+
+            advertisers.forEach(adv => {
+                geos.forEach(geo => {
+                    publisher_regions.forEach(pr => {
+                        supply_types.forEach(st => {
+                            platforms.forEach(p => {
+                                formats.forEach(f => {
+                                    const budget_adv = Math.random();
+                                    const budget_net = Math.random();
+                                    const ctr_adv = randomMetric(0.02, 0.015);
+                                    const ctr_net = randomMetric(0.018, 0.01);
+                                    const cvr_adv = randomMetric(0.05, 0.04);
+                                    const cvr_net = randomMetric(0.045, 0.03);
+                                    
+                                    data.push({
+                                        advertiser: adv,
+                                        traffic_geo: geo,
+                                        publisher_region: pr,
+                                        supply_type: st,
+                                        platform: p,
+                                        format: f,
+                                        share_of_budget: budget_adv,
+                                        ctr: ctr_adv,
+                                        cvr: cvr_adv,
+                                        cpa: randomMetric(10, 8),
+                                    });
+                                    // Add corresponding network data
+                                     data.push({
+                                        advertiser: 'Network Wide',
+                                        traffic_geo: geo,
+                                        publisher_region: pr,
+                                        supply_type: st,
+                                        platform: p,
+                                        format: f,
+                                        share_of_budget: budget_net,
+                                        ctr: ctr_net,
+                                        cvr: cvr_net,
+                                        cpa: randomMetric(12, 7),
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+            // Normalize share_of_budget to sum to 1 for each advertiser/geo combination
+            const normalizedData = [];
+            const groups = d3.group(data, d => d.advertiser, d => d.traffic_geo);
+            groups.forEach(geoGroup => {
+                geoGroup.forEach(advData => {
+                    const totalBudget = d3.sum(advData, d => d.share_of_budget);
+                    advData.forEach(row => {
+                        row.share_of_budget = row.share_of_budget / totalBudget;
+                        normalizedData.push(row);
+                    })
+                });
+            });
+
+            return normalizedData;
+        }
+
+        // --- UI INITIALIZATION & EVENT LISTENERS ---
+        document.addEventListener('DOMContentLoaded', () => {
+            rawData = generateMockData();
+            initializeApp();
+
+            // Event Listeners
+            document.getElementById('advertiser-filter').addEventListener('change', (e) => {
+                state.advertiser = e.target.value;
+                renderAllCharts();
+            });
+            document.getElementById('geo-filter').addEventListener('change', (e) => {
+                state.traffic_geo = e.target.value;
+                renderAllCharts();
+            });
+            document.getElementById('metric-filter').addEventListener('change', (e) => {
+                state.metric = e.target.value;
+                renderAllCharts();
+            });
+            document.getElementById('chart-type-toggle').addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    document.querySelectorAll('#chart-type-toggle button').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+                    state.chartType = e.target.dataset.type;
+                    renderAllCharts();
+                }
+            });
+            document.getElementById('csv-upload').addEventListener('change', handleFileUpload);
+        });
+        
+        function initializeApp() {
+            populateFilters();
+            createChartContainers();
+            renderAllCharts();
+        }
+
+        function populateFilters() {
+            const advertisers = [...new Set(rawData.map(d => d.advertiser))].filter(d => d !== 'Network Wide').sort();
+            const geos = ['All', ...new Set(rawData.map(d => d.traffic_geo))].sort();
+
+            const advFilter = document.getElementById('advertiser-filter');
+            advFilter.innerHTML = advertisers.map(a => `<option value="${a}">${a}</option>`).join('');
+            state.advertiser = advertisers[0];
+
+            const geoFilter = document.getElementById('geo-filter');
+            geoFilter.innerHTML = geos.map(g => `<option value="${g}">${g}</option>`).join('');
+        }
+
+        function createChartContainers() {
+            const grid = document.getElementById('charts-grid');
+            grid.innerHTML = ''; // Clear existing
+            DIMENSIONS.forEach(dim => {
+                const title = dim.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                const container = document.createElement('div');
+                container.className = 'chart-container bg-white p-4 rounded-xl shadow-md';
+                container.innerHTML = `
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">${title}</h3>
+                    <div id="chart-${dim}" class="w-full h-full min-h-[400px]"></div>
+                    <div id="loader-${dim}" class="loader-container hidden items-center justify-center min-h-[400px]"><div class="loader"></div></div>
+                `;
+                grid.appendChild(container);
+            });
+        }
+        
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('file-name').textContent = file.name;
+            
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: true,
+                complete: function(results) {
+                    console.log("CSV Parsed:", results.data);
+                    rawData = results.data;
+                    initializeApp();
+                },
+                error: function(error) {
+                    console.error("CSV Parsing Error:", error);
+                    alert("Error parsing CSV file. Please check the console for details.");
+                }
+            });
+        }
+        
+        // --- DATA PROCESSING ---
+        function filterData() {
+            return rawData.filter(d => {
+                const geoMatch = state.traffic_geo === 'All' || d.traffic_geo === state.traffic_geo;
+                const advertiserMatch = d.advertiser === state.advertiser || d.advertiser === 'Network Wide';
+                return geoMatch && advertiserMatch;
+            });
+        }
+        
+        function processDataForDimension(filteredData, dimension) {
+            const grouped = d3.group(filteredData, d => d[dimension], d => d.advertiser);
+            
+            const result = [];
+            grouped.forEach((advertiserGroup, dimValue) => {
+                const advData = advertiserGroup.get(state.advertiser);
+                const netData = advertiserGroup.get('Network Wide');
+                
+                if (advData && netData) {
+                    result.push({
+                        dimensionValue: dimValue,
+                        advertiserMetric: d3.mean(advData, d => d[state.metric]),
+                        networkMetric: d3.mean(netData, d => d[state.metric]),
+                        // For bubble chart
+                        bubbleSizeMetric: d3.mean(advData, d => d.ctr),
+                        bubbleColorMetric: d3.mean(advData, d => d.cvr),
+                    });
+                }
+            });
+            return result.sort((a, b) => d3.descending(a.advertiserMetric, b.advertiserMetric));
+        }
+
+        // --- CHART RENDERING ---
+        function renderAllCharts() {
+            const filteredData = filterData();
+            DIMENSIONS.forEach(dim => {
+                const chartData = processDataForDimension(filteredData, dim);
+                renderChart(dim, chartData);
+            });
+        }
+        
+        function renderChart(dimension, data) {
+            const chartDiv = `chart-${dimension}`;
+            const loaderDiv = document.getElementById(`loader-${dimension}`);
+            const chartElement = document.getElementById(chartDiv);
+            
+            if (!data || data.length === 0) {
+                 chartElement.innerHTML = `<div class="flex items-center justify-center h-full text-gray-500">No data available for the current selection.</div>`;
+                 return;
+            }
+
+            loaderDiv.classList.remove('hidden');
+            loaderDiv.classList.add('flex');
+            chartElement.classList.add('hidden');
+
+            let plotData;
+            let layout;
+            const labels = data.map(d => d.dimensionValue);
+            const advertiserValues = data.map(d => d.advertiserMetric);
+            const networkValues = data.map(d => d.networkMetric);
+
+            const metricTitle = state.metric.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            const advertiserName = state.advertiser;
+            
+            const baseLayout = {
+                margin: { l: 60, r: 30, b: 120, t: 40 },
+                legend: { x: 0, y: 1.1, orientation: 'h' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { family: 'Inter, sans-serif', color: '#374151' },
+                xaxis: { automargin: true },
+                yaxis: { automargin: true }
+            };
+
+            switch (state.chartType) {
+                case 'column':
+                    plotData = [
+                        { x: labels, y: advertiserValues, name: advertiserName, type: 'bar', marker: { color: '#10B981' } },
+                        { x: labels, y: networkValues, name: 'Network Benchmark', type: 'bar', marker: { color: '#6B7280' } }
+                    ];
+                    layout = { ...baseLayout, barmode: 'group', title: `${metricTitle}`, yaxis: { title: metricTitle } };
+                    break;
+                case 'treemap':
+                    plotData = [{
+                        type: 'treemap',
+                        labels: labels,
+                        parents: Array(labels.length).fill(""),
+                        values: advertiserValues,
+                        textinfo: 'label+value+percent root',
+                        marker: { colorscale: 'Emeralds' }
+                    }];
+                     layout = { ...baseLayout, title: `${metricTitle} for ${advertiserName}` };
+                    break;
+                case 'radar':
+                     plotData = [
+                        { type: 'scatterpolar', r: advertiserValues, theta: labels, fill: 'toself', name: advertiserName, marker: { color: '#10B981' } },
+                        { type: 'scatterpolar', r: networkValues, theta: labels, fill: 'toself', name: 'Network Benchmark', marker: { color: '#6B7280' }, opacity: 0.6 }
+                    ];
+                    layout = { ...baseLayout, title: `${metricTitle}`, polar: { radialaxis: { visible: true, range: [0, Math.max(...advertiserValues, ...networkValues) * 1.1] } } };
+                    break;
+                case 'bubble':
+                    const sizes = data.map(d => d.bubbleSizeMetric * 2000); // Scale factor for visibility
+                    const colors = data.map(d => d.bubbleColorMetric);
+                    const hoverText = data.map(d => 
+                        `<b>${d.dimensionValue}</b><br>` +
+                        `${metricTitle}: ${d.advertiserMetric.toFixed(2)}<br>` +
+                        `CTR: ${(d.bubbleSizeMetric * 100).toFixed(2)}%<br>`+
+                        `CVR: ${(d.bubbleColorMetric * 100).toFixed(2)}%`
+                    );
+                    plotData = [{
+                        x: labels,
+                        y: advertiserValues,
+                        mode: 'markers',
+                        marker: {
+                            size: sizes,
+                            color: colors,
+                            colorscale: 'Emeralds',
+                            showscale: true,
+                            colorbar: { title: 'CVR' }
+                        },
+                        text: hoverText,
+                        hoverinfo: 'text',
+                        name: advertiserName
+                    }];
+                    layout = { ...baseLayout, title: `${metricTitle} vs. Performance`, yaxis: { title: metricTitle }, xaxis: { title: dimension.replace('_', ' ') } };
+                    break;
+            }
+            
+            setTimeout(() => {
+                Plotly.newPlot(chartDiv, plotData, layout, {responsive: true});
+                loaderDiv.classList.add('hidden');
+                loaderDiv.classList.remove('flex');
+                chartElement.classList.remove('hidden');
+            }, 200); // Simulate loading and allow UI to update
+        }
+    </script>
+</body>
+</html>
+
