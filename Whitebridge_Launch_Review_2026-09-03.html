@@ -1,0 +1,273 @@
+<title>Whitebridge AI Launch Review</title>
+
+<style>
+  :root{
+    --bg:#F5F7FB; --surface:#FFFFFF; --surface-2:#EEF2F9; --border:#E1E7F1; --border-2:#CDD6E6;
+    --ink:#0E1626; --ink-2:#47536A; --ink-3:#78849B;
+    --accent:#0B4FE0; --accent-ink:#0A3FB0; --accent-soft:#E7EEFD;
+    --miss:#D33A45; --miss-soft:#FBE6E7; --watch:#C07C0C; --watch-soft:#FAF0DA; --ok:#1C9A62; --ok-soft:#E2F4EB;
+    --shadow:0 1px 2px rgba(14,22,38,.04),0 10px 30px -14px rgba(14,22,38,.18);
+    --mono:"SF Mono",ui-monospace,Menlo,monospace;
+    --sans:"Poppins","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    /* CREATIVE IMAGES — one line per distinct image asset, base64 data: URI.
+       Name them for what the picture DOES ("--img-offer", "--img-testimonial"),
+       not by hash. Delete these two examples if the report has no images. */
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0A0E16; --surface:#121926; --surface-2:#0E141F; --border:#243044; --border-2:#33405A;
+    --ink:#EAF0F8; --ink-2:#A7B3C7; --ink-3:#6E7B92;
+    --accent:#6EA0FF; --accent-ink:#9CBEFF; --accent-soft:#15233E;
+    --miss:#F16B73; --miss-soft:#2C1517; --watch:#E7A93A; --watch-soft:#2A2110; --ok:#46C48B; --ok-soft:#10261C;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 34px -16px rgba(0,0,0,.72);
+  }}
+  :root[data-theme="light"]{--bg:#F5F7FB;--surface:#FFFFFF;--surface-2:#EEF2F9;--border:#E1E7F1;--border-2:#CDD6E6;--ink:#0E1626;--ink-2:#47536A;--ink-3:#78849B;--accent:#0B4FE0;--accent-ink:#0A3FB0;--accent-soft:#E7EEFD;--miss:#D33A45;--miss-soft:#FBE6E7;--watch:#C07C0C;--watch-soft:#FAF0DA;--ok:#1C9A62;--ok-soft:#E2F4EB;--shadow:0 1px 2px rgba(14,22,38,.04),0 10px 30px -14px rgba(14,22,38,.18);}
+  :root[data-theme="dark"]{--bg:#0A0E16;--surface:#121926;--surface-2:#0E141F;--border:#243044;--border-2:#33405A;--ink:#EAF0F8;--ink-2:#A7B3C7;--ink-3:#6E7B92;--accent:#6EA0FF;--accent-ink:#9CBEFF;--accent-soft:#15233E;--miss:#F16B73;--miss-soft:#2C1517;--watch:#E7A93A;--watch-soft:#2A2110;--ok:#46C48B;--ok-soft:#10261C;--shadow:0 1px 2px rgba(0,0,0,.4),0 12px 34px -16px rgba(0,0,0,.72);}
+
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:980px;margin:0 auto;padding:0 24px 72px;}
+  .topbar{display:flex;align-items:center;gap:12px;padding:20px 0 18px;}
+  .brand{font-weight:700;letter-spacing:-.02em;font-size:15px;color:var(--ink);display:flex;align-items:center;gap:9px;}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft);}
+  .brand small{font-weight:500;color:var(--ink-3);letter-spacing:.14em;text-transform:uppercase;font-size:10px;font-family:var(--mono);}
+  .stamp{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);}
+
+  header.rep{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px 28px;box-shadow:var(--shadow);}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;}
+  h1{font-size:clamp(24px,3.4vw,32px);margin:8px 0 2px;letter-spacing:-.02em;text-wrap:balance;}
+  .sub{color:var(--ink-2);font-size:14px;margin:0;}
+  .metarow{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);}
+  .metarow div{font-size:12.5px;color:var(--ink-2);}
+  .metarow b{color:var(--ink);font-weight:600;}
+  .metarow .k{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:2px;}
+
+  .verdict{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;margin-top:16px;background:var(--surface);border:1px solid var(--border);border-left:5px solid var(--ok);border-radius:16px;padding:22px 26px;box-shadow:var(--shadow);}
+  .verdict.is-miss{border-left-color:var(--miss);}
+  .verdict.is-none{border-left-color:var(--watch);}
+  .verdict .badge{font-weight:800;font-size:34px;letter-spacing:-.02em;color:var(--ok);background:var(--ok-soft);border-radius:12px;padding:14px 22px;line-height:1;text-align:center;}
+  .verdict.is-miss .badge{color:var(--miss);background:var(--miss-soft);}
+  .verdict.is-none .badge{color:var(--watch);background:var(--watch-soft);}
+  .verdict .badge small{display:block;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;margin-top:6px;color:inherit;}
+  .verdict .headline{font-size:16px;color:var(--ink);}
+  .verdict .headline b{font-weight:700;}
+  .verdict .headline .muted{color:var(--ink-2);font-size:13.5px;display:block;margin-top:4px;}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px;}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:15px 16px;box-shadow:var(--shadow);}
+  .kpi .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);}
+  .kpi .v{font-size:22px;font-weight:700;letter-spacing:-.01em;margin-top:4px;font-variant-numeric:tabular-nums;}
+  .kpi .d{font-size:11.5px;color:var(--ink-2);margin-top:2px;}
+  .kpi.good .v{color:var(--ok);}
+  .kpi.bad .v{color:var(--miss);}
+  .kpi.warn .v{color:var(--watch);}
+
+  section{margin-top:30px;}
+  h2{font-size:15px;letter-spacing:-.01em;margin:0 0 12px;display:flex;align-items:center;gap:9px;}
+  h2 .n{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:2px 8px;}
+  h3.sub2{font-size:12px;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:20px 2px 8px;font-weight:600;}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;}
+  .tscroll{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600;padding:11px 16px;background:var(--surface-2);border-bottom:1px solid var(--border);white-space:nowrap;}
+  td{padding:10px 16px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  td.num,th.num{font-variant-numeric:tabular-nums;text-align:right;}
+  .cellsub{display:block;color:var(--ink-3);font-size:11.5px;font-family:var(--mono);}
+  .flag{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap;}
+  .flag .d{width:7px;height:7px;border-radius:50%;}
+  .flag.miss{background:var(--miss-soft);color:var(--miss);} .flag.miss .d{background:var(--miss);}
+  .flag.watch{background:var(--watch-soft);color:var(--watch);} .flag.watch .d{background:var(--watch);}
+  .flag.ok{background:var(--ok-soft);color:var(--ok);} .flag.ok .d{background:var(--ok);}
+  .flag.mute{background:var(--surface-2);color:var(--ink-3);} .flag.mute .d{background:var(--ink-3);}
+
+  .barcell{display:flex;align-items:center;gap:10px;min-width:150px;}
+  .bar{height:8px;border-radius:6px;background:var(--accent);opacity:.9;}
+  .bartrack{flex:1;height:8px;border-radius:6px;background:var(--surface-2);overflow:hidden;}
+  .adtitle{font-weight:600;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  /* ---- CREATIVE IMAGES ----------------------------------------------------
+     DECLARE EACH IMAGE ONCE as a --img-* custom property in :root, then paint
+     it through a .t-* class. Do NOT put the data: URI on an <img src> — the
+     same asset is usually referenced 4-6 times across the scorecard and the
+     matrix, and inlining it per reference bloated a real report from 172KB to
+     577KB. One declaration, many references.
+     Accessibility: scorecard thumbs are meaningful -> role="img" + aria-label.
+     Matrix thumbs are decorative (the label sits beside them) -> aria-hidden. */
+  .thumb{background-size:cover;background-position:center;background-repeat:no-repeat;background-color:var(--surface-2);}
+  .ithumb{width:100%;aspect-ratio:360/189;display:block;}
+  .vthumb{width:62px;height:33px;border-radius:5px;border:1px solid var(--border-2);flex:none;}
+
+  /* image scorecard — one card per distinct image asset (s11 Query A) */
+  .imgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .imgcard{background:var(--surface);border:1px solid var(--border);border-top:4px solid var(--ok);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;}
+  .imgcard--mid{border-top-color:var(--watch);}
+  .imgcard--bad{border-top-color:var(--miss);}
+  .imgcard .ib{padding:13px 15px 15px;display:flex;flex-direction:column;gap:8px;}
+  .imgcard .iname{font-size:13px;font-weight:700;letter-spacing:-.01em;}
+  .imgcard .ihash{font-family:var(--mono);font-size:9.5px;color:var(--ink-3);letter-spacing:.06em;}
+  .imgcard .idesc{font-size:11.5px;color:var(--ink-2);line-height:1.45;}
+  .imgcard .icpa{display:flex;align-items:baseline;gap:7px;}
+  .imgcard .icpa .n{font-size:25px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--ok);}
+  .imgcard--mid .icpa .n{color:var(--watch);}
+  .imgcard--bad .icpa .n{color:var(--miss);}
+  .imgcard .icpa .l{font-family:var(--mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);}
+  .imgcard dl{margin:0;display:grid;grid-template-columns:repeat(4,1fr);gap:9px;border-top:1px solid var(--border);padding-top:10px;}
+  .imgcard dl>div{display:flex;flex-direction:column;}
+  .imgcard dt{font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);}
+  .imgcard dd{margin:2px 0 0;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;}
+
+  /* headline x image matrix — same words, different picture (s11 Query B) */
+  .vgroup{border-bottom:1px solid var(--border);padding:15px 18px;}
+  .vgroup:last-child{border-bottom:none;}
+  .vhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:11px;}
+  .vhead .vt{font-size:13.5px;font-weight:700;}
+  .vhead .vc{font-family:var(--mono);font-size:10px;color:var(--ink-3);letter-spacing:.06em;}
+  .vrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:10px;}
+  .vtile{display:flex;gap:10px;align-items:center;background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--ink-3);border-radius:10px;padding:8px 11px 8px 9px;}
+  .vtile--win{border-left-color:var(--ok);}
+  .vtile--mid{border-left-color:var(--watch);}
+  .vtile--lose{border-left-color:var(--miss);}
+  .vtile .vm{min-width:0;display:flex;flex-direction:column;}
+  .vtile .vcpa{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1.15;}
+  .vtile--win .vcpa{color:var(--ok);} .vtile--mid .vcpa{color:var(--watch);} .vtile--lose .vcpa{color:var(--miss);}
+  .vtile .vsub{font-family:var(--mono);font-size:9.5px;color:var(--ink-3);letter-spacing:.03em;white-space:nowrap;}
+  .vtile .vimg{font-family:var(--mono);font-size:9px;color:var(--ink-2);letter-spacing:.04em;text-transform:uppercase;}
+
+  .chartcard{padding:16px 18px 10px;}
+  .metricbtns{display:flex;gap:6px;flex-wrap:wrap;}
+  .mbtn{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.04em;padding:6px 13px;border-radius:8px;border:1px solid var(--border-2);background:var(--surface);color:var(--ink-2);cursor:pointer;transition:.15s;}
+  .mbtn:hover{border-color:var(--accent);color:var(--accent);}
+  .mbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .mbtn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .chart-head{display:flex;align-items:baseline;gap:12px;margin:8px 2px 4px;flex-wrap:wrap;}
+  .chart-head .big{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em;}
+  .chart-head .delta{font-family:var(--mono);font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;}
+  .delta.good{background:var(--ok-soft);color:var(--ok);} .delta.bad{background:var(--miss-soft);color:var(--miss);}
+  .chart-head .cap{font-size:11.5px;color:var(--ink-3);margin-left:auto;}
+
+  .step{display:grid;grid-template-columns:auto 1fr;gap:14px;padding:16px 18px;border-bottom:1px solid var(--border);}
+  .step:last-child{border-bottom:none;}
+  .step .rank{font-family:var(--mono);font-weight:700;font-size:13px;color:#fff;background:var(--accent);border-radius:8px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;}
+  .step .body b{font-size:14px;}
+  .step .body p{margin:4px 0 0;color:var(--ink-2);font-size:12.5px;}
+  .step .sev{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:5px;margin-left:8px;vertical-align:middle;white-space:nowrap;}
+  .sev.miss{background:var(--miss-soft);color:var(--miss);} .sev.watch{background:var(--watch-soft);color:var(--watch);} .sev.ok{background:var(--accent-soft);color:var(--accent-ink);}
+  .step .ref{margin-top:7px;font-size:12px;color:var(--ink-3);}
+  .bp-ref{font-family:var(--mono);font-size:11px;color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:1px 6px;white-space:nowrap;}
+
+  .inflect{list-style:none;margin:0;padding:0;}
+  .inflect li{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:13px 18px;border-bottom:1px solid var(--border);font-size:12.5px;color:var(--ink-2);}
+  .inflect li:last-child{border-bottom:none;}
+  .inflect .when{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink);white-space:nowrap;}
+  .inflect .dir{width:3px;border-radius:2px;}
+  .inflect b{color:var(--ink);}
+
+  .conf{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .conf .c{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:15px 16px;box-shadow:var(--shadow);font-size:12.5px;color:var(--ink-2);}
+  .conf .lvl{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:5px;display:inline-block;margin-bottom:8px;}
+  .lvl.med{background:var(--watch-soft);color:var(--watch);} .lvl.high{background:var(--ok-soft);color:var(--ok);} .lvl.low{background:var(--miss-soft);color:var(--miss);}
+  .conf b{color:var(--ink);}
+
+  .insight{font-size:12.5px;color:var(--ink-2);margin:10px 2px 0;}
+  .insight b{color:var(--ink);}
+  .note{margin-top:22px;font-size:11.5px;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 15px;line-height:1.6;}
+  .note b{color:var(--ink-2);}
+  .note code,.mono{font-family:var(--mono);font-size:11px;}
+  footer{margin-top:26px;font-family:var(--mono);font-size:10px;color:var(--ink-3);text-align:center;}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;}}
+  @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr);}.verdict{grid-template-columns:1fr;}.conf{grid-template-columns:1fr;}.adtitle{max-width:200px;}.imgrid{grid-template-columns:1fr;}}
+</style>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span>Taboola&nbsp;<small>Sage · Launch Review</small></div>
+    <div class="stamp">generated 2026-09-03 · day 7 of 30</div>
+  </div>
+
+  <header class="rep">
+    <div class="eyebrow">Launch Setup Review · Growth EMEA</div>
+    <h1>Whitebridge AI, UAB</h1>
+    <p class="sub">Closed Won → Closed Live · pre-spend setup pre-flight.</p>
+    <div class="metarow">
+      <div><span class="k">Network</span><b>2095698 · Whitebridge AI, UAB - Network</b></div>
+      <div><span class="k">Account</span><b>2095700 · Whitebridge AI, UAB - SC</b></div>
+      <div><span class="k">Launched</span><b>2026-08-28</b></div>
+      <div><span class="k">Reviewed</span><b>2026-09-03</b></div>
+      <div><span class="k">Opp owner</span><b>Gurgen Shaybazyan</b></div>
+    </div>
+  </header>
+
+  <div class="verdict">
+    <div class="badge">SETUP OK<small>SETUP VERDICT</small></div>
+    <div class="headline">
+      <b>Setup passes — 0 critical and 0 moderate issues.</b>
+      <span class="muted">An active Make-Purchase event is installed on the network and a 614-site human blocklist covers both campaigns. Nothing blocks spend.</span>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi good"><div class="k">Critical issues</div><div class="v">0</div><div class="d">0 moderate</div></div>
+    <div class="kpi"><div class="k">Money-category events</div><div class="v">1</div><div class="d">1 active · MAKE_PURCHASE</div></div>
+    <div class="kpi"><div class="k">Events firing</div><div class="v">0</div><div class="d">since launch</div></div>
+    <div class="kpi"><div class="k">Blocklist</div><div class="v">OK</div><div class="d">614 blocks</div></div>
+  </div>
+
+  <section>
+    <h2><span class="n">1</span> Prioritized Next Steps</h2>
+    <div class="card">
+      <div class="step"><div class="rank">1</div><div class="body"><b>No setup fix required — confirm the first purchase lands<span class="sev ok">Note</span></b>
+        <p>whitebridge-purchase is active but has 0 conversions across the 6-day window while both campaigns sit paused; confirm it records once they unpause.</p>
+        <div class="ref">→ <span class="bp-ref">tracking.md</span> verify the event is active and tracking correctly before reading performance</div></div></div>
+
+      <div class="step"><div class="rank">2</div><div class="body"><b>Watch delivery against the 614-site blocklist<span class="sev ok">Note</span></b>
+        <p>614 account-level blocks were set pre-launch and cover every campaign; blocked-site lists can materially cap scale, so monitor delivery as spend ramps.</p>
+        <div class="ref">→ <span class="bp-ref">brand-safety.md</span> approved/blocked site lists may significantly impact scale — monitor delivery after applying</div></div></div>
+
+      <div class="step"><div class="rank">3</div><div class="body"><b>Re-review at activation<span class="sev ok">Note</span></b>
+        <p>This is a setup verdict only; run /sage-activation-review once the account has spend to judge CPA against the €40 opportunity goal.</p>
+        <div class="ref">→ <span class="bp-ref">/sage-activation-review</span> the Closed Live → Activated performance gate</div></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span> Tracking</h2>
+    <div class="card">
+      <div class="tscroll"><table>
+        <thead><tr><th>Conversion event</th><th>Finding</th><th class="num">Status</th></tr></thead>
+        <tbody>
+          <tr><td><b>whitebridge-purchase</b><span class="cellsub">MAKE_PURCHASE · network 2095698</span></td><td>Active and installed. No conversions yet — expected on a 6-day window with both campaigns paused.</td><td class="num"><span class="flag ok"><span class="d"></span>Ready</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <p class="insight">The objective is ONLINE PURCHASES, so only an active MAKE_PURCHASE event decides spend-readiness.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span> Blocklist</h2>
+    <div class="card">
+      <div class="tscroll"><table>
+        <thead><tr><th>Campaign</th><th class="num">Campaign blocks</th><th class="num">Blocked sites</th><th class="num">Status</th></tr></thead>
+        <tbody>
+          <tr><td><b>All campaigns</b><span class="cellsub">account-level · 2095700</span></td><td class="num">—</td><td class="num">614</td><td class="num"><span class="flag ok"><span class="d"></span>OK</span></td></tr>
+          <tr><td><b>Whitebridge | MB | Digital Footprint | MaxC | 28Aug'26</b><span class="cellsub">50316678 · PerformanceRule-id:55398</span></td><td class="num">36</td><td class="num">614</td><td class="num"><span class="flag ok"><span class="d"></span>OK</span></td></tr>
+          <tr><td><b>Whitebridge | MB | Old Connections | MaxC | 27Aug'26</b><span class="cellsub">50315945 · PerformanceRule-id:55398</span></td><td class="num">33</td><td class="num">614</td><td class="num"><span class="flag ok"><span class="d"></span>OK</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <p class="insight">614 human-set account blocks cover both campaigns; performance rules added 69 automated blocks.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">4</span> Confidence</h2>
+    <div class="conf">
+      <div class="c"><span class="lvl high">high · verdict</span>Both checks read directly from trc.unip_rules and the curated analysts.bi_*_blocks_pub tables.</div>
+      <div class="c"><span class="lvl high">high · drivers</span>Blocks are dated 2026-08-26/28 by a named human, and the purchase event is active on the network.</div>
+      <div class="c"><span class="lvl med">Gaps</span>Six-day window with both campaigns paused — zero conversions cannot confirm the pixel end-to-end.</div>
+    </div>
+  </section>
+
+  <div class="note">Setup review only, launch window 2026-08-28 → 2026-09-03 (opportunity Whitebridge AI - Q3 2026, Closed Live). Objective source: marketing_objective = ONLINE PURCHASES on analysts.activation_e_data_for_qlik → target category MAKE_PURCHASE. Tracking from trc.unip_rules (active = is_disabled 0 AND is_archived 0), queried across the network and its child because Growth conversion events sit on the network; firing from reports.action_conversion (clicks + views). Blocklist from analysts.bi_adv_blocks_pub (account-level, campaign_id always NULL) + analysts.bi_campaign_blocks_pub (campaign-level), not trc.blocking_level; those tables carry a ≥$100/30-day inclusion floor, but this account's blocks surfaced so coverage is confirmed. Per-campaign conversion mapping is not required and is not audited. The self-network 2095698 holds only its zero-spend Default campaign and is skipped as a placeholder; both live campaigns are currently paused, reported as status, not as a finding. No performance or CPA verdict — see /sage-activation-review at activation. Where /realize-best-practices sets a stricter threshold, it supersedes this skill's floors.</div>
+
+  <footer>Sage · sage-launch-review · account 2095700 · 12 queries · internal, not a client deliverable</footer>
+</div>
